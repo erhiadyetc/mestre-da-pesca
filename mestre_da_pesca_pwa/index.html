@@ -1,0 +1,3250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mestre da Pesca - Jogo 2D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brass: #f59e0b;
+            --brass-bright: #fde68a;
+            --mahogany: #451a03;
+            --navy-deep: #05111f;
+            --teal-accent: #2dd4bf;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #05111f;
+            color: #f8fafc;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
+        }
+
+        .font-nautical {
+            font-family: 'Cinzel', 'Plus Jakarta Sans', serif;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .btn-game {
+            transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s, box-shadow 0.15s, border-color 0.15s;
+            cursor: pointer;
+        }
+
+        .btn-game:active:not(:disabled) {
+            transform: scale(0.93);
+        }
+
+        .btn-game:disabled {
+            opacity: 0.48;
+            cursor: not-allowed;
+            filter: grayscale(0.65);
+        }
+
+        .brass-panel {
+            background: linear-gradient(165deg, rgba(10, 32, 54, 0.96) 0%, rgba(4, 15, 28, 0.98) 100%);
+            border: 1.5px solid rgba(245, 158, 11, 0.58);
+            box-shadow: 0 24px 55px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(254, 243, 199, 0.2);
+        }
+
+        .hud-pill {
+            background: linear-gradient(180deg, rgba(9, 29, 49, 0.9) 0%, rgba(5, 17, 31, 0.94) 100%);
+            border: 1px solid rgba(245, 158, 11, 0.42);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .steer-btn {
+            background: linear-gradient(180deg, rgba(16, 46, 74, 0.94) 0%, rgba(6, 20, 35, 0.97) 100%);
+            border: 2px solid rgba(251, 191, 36, 0.68);
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(254, 243, 199, 0.25);
+            transition: transform 0.1s ease, background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+        }
+
+        .steer-btn.active-steer,
+        .steer-btn:active {
+            transform: scale(0.92);
+            background: linear-gradient(180deg, rgba(245, 158, 11, 0.96) 0%, rgba(217, 119, 6, 0.96) 100%);
+            color: #05111f;
+            border-color: #fef08a;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(4, 15, 28, 0.6);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(245, 158, 11, 0.55);
+            border-radius: 10px;
+        }
+
+        /* Aviso amigável quando o aparelho está em retrato, sem bloquear completamente o jogo */
+        #portraitBanner {
+            display: none;
+        }
+        @media (orientation: portrait) and (max-width: 900px) {
+            #portraitBanner.show-portrait {
+                display: flex;
+            }
+        }
+    </style>
+
+    <meta name="theme-color" content="#05111f">
+    <meta name="description" content="Mestre da Pesca - Jogo 2D">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+</head>
+<body class="relative overflow-hidden">
+
+    <!-- Tela Inicial sobre o Cenário Ao Vivo -->
+    <div id="titleScreen" class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-950/45 backdrop-blur-[3px]">
+        <div class="brass-panel rounded-3xl w-full max-w-md p-6 sm:p-7 text-center flex flex-col items-center gap-4">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/15 border border-amber-400/45 text-amber-200 text-xs font-bold uppercase tracking-wider">
+                <span>⚓</span>
+                <span>Expedição Náutica 2D</span>
+            </div>
+
+            <div>
+                <h1 class="font-nautical text-2xl sm:text-3xl font-extrabold text-amber-300 tracking-wide drop-shadow">
+                    Mestre da Pesca
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-300 mt-1">
+                    Explore 4 zonas oceânicas, evolua seu barco e encha o porão!
+                </p>
+            </div>
+
+            <div class="w-full flex flex-col gap-2.5 mt-1">
+                <button id="btnNewGame" class="btn-game w-full bg-gradient-to-b from-amber-300 via-amber-400 to-orange-500 hover:from-amber-200 hover:to-orange-400 text-slate-950 font-extrabold py-3 px-4 rounded-2xl text-sm sm:text-base border border-yellow-100 shadow-lg flex items-center justify-center gap-2">
+                    <span>🎣</span>
+                    <span>Novo jogo</span>
+                </button>
+
+                <button id="btnLoadGame" class="btn-game w-full bg-gradient-to-b from-teal-400 to-cyan-700 hover:from-teal-300 hover:to-cyan-600 text-slate-950 font-extrabold py-3 px-4 rounded-2xl text-sm sm:text-base border border-teal-100 shadow-lg flex items-center justify-center gap-2">
+                    <span>💾</span>
+                    <span>Carregar</span>
+                </button>
+
+                <button id="btnCredits" class="btn-game w-full bg-slate-900/90 hover:bg-slate-800 text-amber-200 font-bold py-2.5 px-4 rounded-2xl text-sm border border-amber-500/45 flex items-center justify-center gap-2">
+                    <span>📜</span>
+                    <span>Creditos</span>
+                </button>
+            </div>
+
+            <p id="titleSaveStatus" class="text-xs text-slate-300 font-medium min-h-[1.25rem]"></p>
+        </div>
+    </div>
+
+    <!-- Modal: Créditos -->
+    <div id="creditsPanel" class="fixed inset-0 bg-slate-950/75 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="brass-panel rounded-3xl w-full max-w-sm p-5 sm:p-6 text-center text-white relative flex flex-col items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-400/50 flex items-center justify-center text-2xl">
+                ⚓
+            </div>
+            <h2 class="font-nautical text-xl font-bold text-amber-300 tracking-wide">Creditos</h2>
+            <p class="text-base sm:text-lg font-extrabold text-amber-100 py-2 px-4 rounded-2xl bg-slate-950/80 border border-amber-500/35 w-full">
+                feito por Rhiady
+            </p>
+            <button id="btnCloseCredits" class="btn-game mt-1 w-full bg-gradient-to-b from-amber-300 to-amber-500 text-slate-950 font-extrabold py-2.5 px-4 rounded-xl text-sm border border-yellow-100">
+                Voltar
+            </button>
+        </div>
+    </div>
+
+    <!-- Canvas Principal Full-Bleed (100vw x 100vh) -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Aviso Amigável de Orientação Paisagem (Celular em Pé) -->
+    <div id="portraitBanner" class="show-portrait fixed top-16 left-1/2 -translate-x-1/2 z-30 brass-panel rounded-2xl px-3.5 py-2 items-center gap-2.5 text-xs text-amber-100 shadow-2xl max-w-[92vw]">
+        <span class="text-lg">📱🔄</span>
+        <span class="font-medium leading-snug">Gire o celular para <strong class="text-amber-300">paisagem</strong> para aproveitar o campo de visão amplo!</span>
+        <button id="btnDismissPortrait" class="btn-game bg-slate-800 hover:bg-slate-700 text-amber-200 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-amber-500/30 shrink-0">
+            Continuar assim
+        </button>
+    </div>
+
+    <!-- HUD Superior Compacto (Moedas, Profundidade/Zona, Anzol, Porão, Áudio, Bestiário, Loja, Menu) -->
+    <header id="hudTop" class="fixed top-0 left-0 right-0 px-2.5 py-2 sm:px-4 sm:py-2.5 flex justify-between items-center gap-2 pointer-events-none z-20">
+        <!-- Esquerda: Saldo, Porão, Profundidade + Zona, Anzol -->
+        <div class="flex items-center gap-1.5 sm:gap-2 pointer-events-auto flex-wrap">
+            <!-- Dinheiro ($) -->
+            <div class="hud-pill backdrop-blur-md rounded-2xl px-3 py-1.5 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-600 via-amber-300 to-yellow-100 text-slate-950 font-extrabold text-xs flex items-center justify-center shadow border border-yellow-100">$</span>
+                <span id="coinDisplay" class="text-amber-200 font-extrabold text-base sm:text-lg tracking-wide">0</span>
+            </div>
+
+            <!-- Botão Porão (Inventário do Barco) ao lado das moedas -->
+            <button id="btnInventory" class="btn-game hud-pill hover:border-teal-300/80 backdrop-blur-md rounded-2xl px-2.5 sm:px-3 py-1.5 flex items-center gap-1.5 text-xs sm:text-sm font-bold text-white">
+                <span class="text-base">📦</span>
+                <span class="text-teal-200">Porão</span>
+                <span id="holdCountDisplay" class="text-teal-300 font-extrabold">0/5</span>
+                <span id="holdFullBadge" class="hidden bg-rose-600 text-white text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full animate-pulse">Cheio</span>
+            </button>
+
+            <!-- Profundidade atual / Máxima + Zona -->
+            <div class="hud-pill backdrop-blur-md rounded-2xl px-2.5 sm:px-3 py-1.5 flex items-center gap-1.5">
+                <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-300/90">Prof.:</span>
+                <span id="depthDisplay" class="text-white font-extrabold text-xs sm:text-sm">0m</span>
+                <span class="text-slate-400 text-[11px] sm:text-xs">/ <span id="maxDepthHud">30m</span></span>
+                <span id="zoneBadge" class="hidden md:inline-block ml-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-200 border border-teal-400/40">
+                    Recife de Coral
+                </span>
+            </div>
+
+            <!-- Carga do Anzol -->
+            <div class="hud-pill backdrop-blur-md rounded-2xl px-2.5 sm:px-3 py-1.5 flex items-center gap-1.5">
+                <span class="text-sm">🪝</span>
+                <span id="hookCountDisplay" class="text-teal-300 font-extrabold text-xs sm:text-sm">0/1</span>
+                <span id="hookStateText" class="hidden lg:inline text-[11px] text-amber-200/80 border-l border-amber-500/30 pl-2">Pronto</span>
+            </div>
+        </div>
+
+        <!-- Direita: Música, Som do Mar, SFX, Bestiário, Loja e Menu -->
+        <div class="flex items-center gap-1 sm:gap-1.5 pointer-events-auto shrink-0">
+            <button id="btnMusic" title="Alternar Música Marítima" class="btn-game hud-pill hover:border-amber-300 text-white rounded-2xl px-2.5 py-2 flex items-center gap-1 text-xs font-bold">
+                <span id="iconMusic">🎵</span>
+                <span class="hidden xl:inline text-amber-200">Música</span>
+            </button>
+
+            <button id="btnWaves" title="Alternar Som de Mar" class="btn-game hud-pill hover:border-teal-300 text-white rounded-2xl px-2.5 py-2 flex items-center gap-1 text-xs font-bold">
+                <span id="iconWaves">🌊</span>
+                <span class="hidden xl:inline text-teal-200">Mar</span>
+            </button>
+
+            <button id="btnSound" title="Alternar Efeitos Sonoros (SFX)" class="btn-game hud-pill hover:border-amber-300 text-white rounded-2xl px-2.5 py-2 flex items-center gap-1 text-xs font-bold">
+                <span id="iconSfx">🔊</span>
+                <span class="hidden xl:inline text-emerald-200">SFX</span>
+            </button>
+
+            <button id="btnCatalog" class="btn-game bg-gradient-to-b from-teal-400 to-cyan-700 hover:from-teal-300 hover:to-cyan-600 text-slate-950 border border-teal-100 rounded-2xl px-2.5 sm:px-3.5 py-2 shadow-lg flex items-center gap-1.5 font-extrabold text-xs sm:text-sm">
+                <span>🧭</span>
+                <span>Bestiário</span>
+            </button>
+
+            <button id="btnShopToggle" class="btn-game bg-gradient-to-b from-amber-300 via-amber-400 to-orange-500 hover:from-amber-200 hover:to-orange-400 text-slate-950 border border-yellow-100 rounded-2xl px-3 sm:px-4 py-2 shadow-lg flex items-center gap-1.5 font-extrabold text-xs sm:text-sm">
+                <span>⚓</span>
+                <span>Loja</span>
+                <span id="shopBadge" class="hidden w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping"></span>
+            </button>
+
+            <button id="btnGameMenu" class="btn-game hud-pill hover:border-amber-300 text-amber-200 rounded-2xl px-2.5 sm:px-3.5 py-2 shadow-lg flex items-center gap-1.5 font-extrabold text-xs sm:text-sm">
+                <span>☰</span>
+                <span>Menu</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Dica Central na Base para Arremessar -->
+    <div id="castPrompt" class="fixed bottom-5 left-1/2 -translate-x-1/2 pointer-events-none z-10 transition-opacity duration-300">
+        <div class="hud-pill backdrop-blur-md text-amber-100 px-4 py-2 rounded-full shadow-xl text-xs sm:text-sm font-semibold flex items-center gap-2 whitespace-nowrap">
+            <span class="animate-bounce">⚓</span>
+            <span>Clique ou toque na água para lançar • Use ◀ ▶ para guiar o anzol</span>
+        </div>
+    </div>
+
+    <!-- Setinhas Visíveis nos Cantos Inferiores para Guiar o Anzol (Esquerda / Direita) -->
+    <div id="hookControls" class="fixed bottom-3.5 left-3.5 right-3.5 flex justify-between items-center pointer-events-none z-20">
+        <button id="btnSteerLeft" aria-label="Guiar anzol para a esquerda" class="steer-btn pointer-events-auto text-amber-200 rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex flex-col items-center justify-center font-extrabold select-none">
+            <span class="text-xl sm:text-2xl leading-none">◀</span>
+            <span class="text-[9px] uppercase tracking-wider opacity-85 mt-0.5">Esq</span>
+        </button>
+
+        <div class="hidden sm:flex hud-pill px-3 py-1 rounded-full text-[11px] text-amber-200/80 font-semibold items-center gap-1.5">
+            <span>🪝 Direção do Anzol</span>
+            <span class="text-slate-400">•</span>
+            <span>Setas ◀ ▶ ou A / D</span>
+        </div>
+
+        <button id="btnSteerRight" aria-label="Guiar anzol para a direita" class="steer-btn pointer-events-auto text-amber-200 rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex flex-col items-center justify-center font-extrabold select-none">
+            <span class="text-xl sm:text-2xl leading-none">▶</span>
+            <span class="text-[9px] uppercase tracking-wider opacity-85 mt-0.5">Dir</span>
+        </button>
+    </div>
+
+    <!-- Alerta de Porão Cheio na Tela -->
+    <div id="holdFullBanner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+        <div class="brass-panel border-rose-500/80 rounded-2xl px-4 py-2 flex items-center gap-3 shadow-2xl">
+            <span class="text-lg">⚠️</span>
+            <span class="text-xs sm:text-sm font-bold text-rose-200">Porão lotado! Venda ou libere peixes para guardar novos.</span>
+            <button id="btnOpenHoldFromBanner" class="btn-game bg-gradient-to-b from-amber-300 to-orange-500 text-slate-950 font-extrabold text-xs px-3 py-1 rounded-xl border border-yellow-100">
+                Abrir Porão
+            </button>
+        </div>
+    </div>
+
+    <!-- Notificação Lateral ao Guardar Peixes no Porão -->
+    <div id="catchSummary" class="fixed top-20 right-4 pointer-events-none z-20 hidden max-w-xs sm:max-w-sm">
+        <div id="catchSummaryBox" class="brass-panel backdrop-blur-md border-teal-400/80 rounded-2xl px-4 py-3 shadow-2xl text-left">
+            <div class="flex items-center justify-between gap-3 mb-1">
+                <p id="catchSummaryTitle" class="text-[11px] uppercase tracking-wider text-teal-300 font-bold">Guardado no Porão!</p>
+                <span id="catchSummaryBadge" class="text-xs font-extrabold text-amber-300 bg-slate-950/90 px-2 py-0.5 rounded-full border border-amber-500/35">0/5</span>
+            </div>
+            <div id="catchItemsText" class="text-xs text-slate-200 space-y-0.5 max-h-28 overflow-hidden"></div>
+            <p id="catchSummaryWarning" class="hidden text-[11px] text-rose-400 font-bold mt-1.5 border-t border-slate-700 pt-1"></p>
+        </div>
+    </div>
+
+    <!-- Modal: Loja Compacta em Grade de Itens com 'Seu Saldo: $X' em Destaque -->
+    <div id="shopPanel" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-30 hidden flex items-center justify-center p-3">
+        <div class="brass-panel rounded-2xl w-full max-w-2xl p-3.5 sm:p-4 text-white relative max-h-[90vh] flex flex-col">
+            <div class="flex flex-wrap justify-between items-center mb-2.5 pb-2 border-b border-amber-500/35 shrink-0 gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">⚓</span>
+                    <h2 class="font-nautical text-base sm:text-lg font-bold text-amber-300 tracking-wide">Loja Náutica</h2>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <div class="bg-slate-950/95 border border-amber-400/80 rounded-xl px-3 py-1 flex items-center gap-1.5 shadow-inner">
+                        <span class="text-[11px] text-slate-300 font-semibold">Seu Saldo:</span>
+                        <span class="text-amber-300 font-extrabold text-sm sm:text-base">$<span id="shopCoinDisplay">0</span></span>
+                    </div>
+                    <button id="btnCloseShop" aria-label="Fechar Loja" class="btn-game bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl p-1.5 border border-amber-500/35">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grade Compacta de Itens de Upgrade -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 overflow-y-auto pr-0.5">
+                <!-- Item 1: Linha Mais Longa -->
+                <div id="cardLine" class="bg-slate-900/85 border border-amber-500/25 rounded-xl p-2.5 flex flex-col items-center text-center justify-between gap-1.5 transition-colors">
+                    <div class="w-full flex justify-between items-center text-[10px] font-bold">
+                        <span class="text-sky-300 uppercase">Linha</span>
+                        <span id="lvlLine" class="bg-sky-950 text-sky-300 px-1.5 py-0.5 rounded border border-sky-500/40">Nv. 1</span>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-400/45 flex items-center justify-center text-xl">📏</div>
+                    <div>
+                        <div class="font-bold text-xs text-white leading-tight">Linha Mais Longa</div>
+                        <div class="text-[11px] text-slate-300">Prof.: <span id="statLine" class="font-bold text-sky-300">30m</span></div>
+                    </div>
+                    <button id="buyLine" class="btn-game w-full bg-gradient-to-b from-amber-300 to-amber-500 text-slate-950 font-extrabold py-1.5 px-2 rounded-lg text-xs border border-yellow-100">
+                        $15
+                    </button>
+                </div>
+
+                <!-- Item 2: Anzol Reforçado -->
+                <div id="cardHook" class="bg-slate-900/85 border border-amber-500/25 rounded-xl p-2.5 flex flex-col items-center text-center justify-between gap-1.5 transition-colors">
+                    <div class="w-full flex justify-between items-center text-[10px] font-bold">
+                        <span class="text-amber-300 uppercase">Anzol</span>
+                        <span id="lvlHook" class="bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/40">Nv. 1</span>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-400/45 flex items-center justify-center text-xl">🪝</div>
+                    <div>
+                        <div class="font-bold text-xs text-white leading-tight">Anzol Reforçado</div>
+                        <div class="text-[11px] text-slate-300">Lance: <span id="statHook" class="font-bold text-amber-300">1 peixe</span></div>
+                    </div>
+                    <button id="buyHook" class="btn-game w-full bg-gradient-to-b from-amber-300 to-amber-500 text-slate-950 font-extrabold py-1.5 px-2 rounded-lg text-xs border border-yellow-100">
+                        $25
+                    </button>
+                </div>
+
+                <!-- Item 3: Carretilha Turbo -->
+                <div id="cardReel" class="bg-slate-900/85 border border-amber-500/25 rounded-xl p-2.5 flex flex-col items-center text-center justify-between gap-1.5 transition-colors">
+                    <div class="w-full flex justify-between items-center text-[10px] font-bold">
+                        <span class="text-purple-300 uppercase">Carretilha</span>
+                        <span id="lvlReel" class="bg-purple-950 text-purple-300 px-1.5 py-0.5 rounded border border-purple-500/40">Nv. 1</span>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-400/45 flex items-center justify-center text-xl">⚙️</div>
+                    <div>
+                        <div class="font-bold text-xs text-white leading-tight">Carretilha Turbo</div>
+                        <div class="text-[11px] text-slate-300">Veloc.: <span id="statReel" class="font-bold text-purple-300">100%</span></div>
+                    </div>
+                    <button id="buyReel" class="btn-game w-full bg-gradient-to-b from-amber-300 to-amber-500 text-slate-950 font-extrabold py-1.5 px-2 rounded-lg text-xs border border-yellow-100">
+                        $20
+                    </button>
+                </div>
+
+                <!-- Item 4: Isca Troféu -->
+                <div id="cardBait" class="bg-slate-900/85 border border-amber-500/25 rounded-xl p-2.5 flex flex-col items-center text-center justify-between gap-1.5 transition-colors">
+                    <div class="w-full flex justify-between items-center text-[10px] font-bold">
+                        <span class="text-rose-300 uppercase">Isca</span>
+                        <span id="lvlBait" class="bg-rose-950 text-rose-300 px-1.5 py-0.5 rounded border border-rose-500/40">Nv. 1</span>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-400/45 flex items-center justify-center text-xl">✨</div>
+                    <div>
+                        <div class="font-bold text-xs text-white leading-tight">Isca Troféu</div>
+                        <div class="text-[11px] text-slate-300">Bônus: <span id="statBait" class="font-bold text-rose-300">+0%</span></div>
+                    </div>
+                    <button id="buyBait" class="btn-game w-full bg-gradient-to-b from-amber-300 to-amber-500 text-slate-950 font-extrabold py-1.5 px-2 rounded-lg text-xs border border-yellow-100">
+                        $30
+                    </button>
+                </div>
+
+                <!-- Item 5: Barco / Porão -->
+                <div id="cardBoat" class="bg-slate-900/85 border border-amber-500/25 rounded-xl p-2.5 flex flex-col items-center text-center justify-between gap-1.5 transition-colors">
+                    <div class="w-full flex justify-between items-center text-[10px] font-bold">
+                        <span class="text-teal-300 uppercase">Barco / Porão</span>
+                        <span id="lvlBoat" class="bg-teal-950 text-teal-300 px-1.5 py-0.5 rounded border border-teal-500/40">Nv. 1</span>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-teal-500/15 border border-teal-400/45 flex items-center justify-center text-xl">🚢</div>
+                    <div>
+                        <div id="boatTierName" class="font-bold text-xs text-white leading-tight">Bote de Madeira</div>
+                        <div class="text-[11px] text-slate-300">Porão: <span id="statBoat" class="font-bold text-teal-300">5 peixes</span></div>
+                    </div>
+                    <button id="buyBoat" class="btn-game w-full bg-gradient-to-b from-amber-300 to-amber-500 text-slate-950 font-extrabold py-1.5 px-2 rounded-lg text-xs border border-yellow-100">
+                        $35
+                    </button>
+                </div>
+
+                <!-- Card de Atalho para o Porão -->
+                <div class="bg-slate-950/80 border border-teal-500/25 rounded-xl p-2.5 flex flex-col items-center justify-center text-center gap-1.5">
+                    <span class="text-lg">📦</span>
+                    <p class="text-[11px] text-slate-300 leading-snug">Peixes ficam no <b class="text-teal-300">Porão</b> até você escolher vender.</p>
+                    <button id="btnShopToHold" class="btn-game w-full bg-gradient-to-b from-teal-400 to-cyan-600 text-slate-950 font-extrabold py-1.5 px-2 rounded-lg text-xs border border-teal-100">
+                        Ver Porão
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Porão do Barco (Venda Individual, Vender Tudo ou Soltar/Descartar) -->
+    <div id="inventoryPanel" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-30 hidden flex items-center justify-center p-3">
+        <div class="brass-panel rounded-2xl w-full max-w-2xl p-3.5 sm:p-5 text-white max-h-[90vh] flex flex-col">
+            <div class="flex flex-wrap justify-between items-center mb-2.5 pb-2.5 border-b border-amber-500/35 shrink-0 gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">📦</span>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="font-nautical text-base sm:text-lg font-bold text-amber-300">Porão do Barco</h2>
+                            <span id="invModalCapacity" class="text-xs bg-teal-950 text-teal-200 border border-teal-500/45 px-2 py-0.5 rounded-full font-bold">0/5</span>
+                        </div>
+                        <p class="text-[11px] text-slate-300">Venda peixes escolhidos, venda tudo ou libere espaço soltando os menores.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button id="btnSellAll" class="btn-game bg-gradient-to-b from-amber-300 to-orange-500 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs sm:text-sm border border-yellow-100 shadow">
+                        Vender Tudo ($<span id="invTotalValue">0</span>)
+                    </button>
+                    <button id="btnCloseInventory" aria-label="Fechar Porão" class="btn-game bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl p-1.5 border border-amber-500/35">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="inventoryList" class="overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1 min-h-[150px]"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Bestiário de 20 Espécies com Recordes de Peso (kg) e Valor -->
+    <div id="catalogPanel" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-30 hidden flex items-center justify-center p-3 sm:p-5">
+        <div class="brass-panel rounded-3xl w-full max-w-3xl p-4 sm:p-6 text-white max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-3 pb-2.5 border-b border-amber-500/35 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">🧭</span>
+                    <div>
+                        <h2 class="font-nautical text-lg sm:text-xl font-bold text-amber-300">Bestiário & Recordes</h2>
+                        <p class="text-xs text-slate-300">Espécies descobertas: <span id="discoveredCount" class="font-bold text-teal-300">0/20</span></p>
+                    </div>
+                </div>
+                <button id="btnCloseCatalog" aria-label="Fechar Bestiário" class="btn-game bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl p-2 border border-amber-500/35">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="catalogList" class="overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Menu Durante o Jogo (Salvar jogo, Reset, Sair sem salvar) -->
+    <div id="gameMenuPanel" class="fixed inset-0 bg-slate-950/75 backdrop-blur-xs z-30 hidden flex items-center justify-center p-4">
+        <div class="brass-panel rounded-3xl w-full max-w-sm p-4 sm:p-5 text-white flex flex-col gap-3">
+            <div class="flex justify-between items-center pb-2.5 border-b border-amber-500/35">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">☰</span>
+                    <h2 class="font-nautical text-lg font-bold text-amber-300">Menu</h2>
+                </div>
+                <button id="btnCloseGameMenu" aria-label="Fechar Menu" class="btn-game bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl p-1.5 border border-amber-500/35">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <button id="btnMenuSave" class="btn-game w-full bg-gradient-to-b from-amber-300 via-amber-400 to-orange-500 hover:from-amber-200 hover:to-orange-400 text-slate-950 font-extrabold py-2.5 px-4 rounded-xl text-sm border border-yellow-100 shadow flex items-center justify-center gap-2">
+                <span>💾</span>
+                <span>Salvar jogo</span>
+            </button>
+
+            <button id="btnMenuReset" class="btn-game w-full bg-slate-900/90 hover:bg-slate-800 text-amber-200 font-bold py-2.5 px-4 rounded-xl text-sm border border-amber-500/45 flex items-center justify-center gap-2">
+                <span>🔄</span>
+                <span>Reset</span>
+            </button>
+
+            <button id="btnMenuExitNoSave" class="btn-game w-full bg-rose-950/85 hover:bg-rose-900 text-rose-200 font-bold py-2.5 px-4 rounded-xl text-sm border border-rose-500/50 flex items-center justify-center gap-2">
+                <span>🚪</span>
+                <span>Sair sem salvar</span>
+            </button>
+
+            <p id="menuFeedback" class="text-center text-xs text-teal-300 font-semibold min-h-[1.2rem]"></p>
+        </div>
+    </div>
+
+<script>
+// ============================================================================
+// 1. SISTEMA DE ÁUDIO WEB AUDIO API (ONDAS DO MAR, MÚSICA E SFX)
+// ============================================================================
+class MaritimeAudioEngine {
+    constructor() {
+        this.ctx = null;
+        this.sfxEnabled = true;
+        this.wavesEnabled = true;
+        this.musicEnabled = true;
+
+        this.waveGain = null;
+        this.musicGain = null;
+        this.musicInterval = null;
+        this.stepIndex = 0;
+    }
+
+    init() {
+        try {
+            if (!this.ctx) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                this.ctx = new AudioCtx();
+                this.createOceanWaves();
+                this.createMusicLoop();
+            }
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume();
+            }
+            this.applyMix();
+        } catch (err) {
+            console.warn('Áudio indisponível:', err);
+        }
+    }
+
+    createOceanWaves() {
+        if (!this.ctx || this.waveGain) return;
+        const sampleRate = this.ctx.sampleRate;
+        const length = sampleRate * 4;
+        const buffer = this.ctx.createBuffer(1, length, sampleRate);
+        const data = buffer.getChannelData(0);
+
+        let lastSample = 0;
+        for (let i = 0; i < length; i++) {
+            const white = Math.random() * 2 - 1;
+            lastSample = (lastSample + 0.032 * white) / 1.032;
+            data[i] = lastSample * 2.8;
+        }
+
+        const source = this.ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+
+        const lowpass = this.ctx.createBiquadFilter();
+        lowpass.type = 'lowpass';
+        lowpass.frequency.setValueAtTime(320, this.ctx.currentTime);
+        lowpass.Q.setValueAtTime(0.75, this.ctx.currentTime);
+
+        // Modulação lenta para simular o fluxo e refluxo das ondas no casco
+        const surfLfo = this.ctx.createOscillator();
+        surfLfo.type = 'sine';
+        surfLfo.frequency.setValueAtTime(0.13, this.ctx.currentTime);
+
+        const lfoAmount = this.ctx.createGain();
+        lfoAmount.gain.setValueAtTime(165, this.ctx.currentTime);
+        surfLfo.connect(lfoAmount);
+        lfoAmount.connect(lowpass.frequency);
+
+        const gainNode = this.ctx.createGain();
+        gainNode.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+
+        source.connect(lowpass);
+        lowpass.connect(gainNode);
+        gainNode.connect(this.ctx.destination);
+
+        source.start();
+        surfLfo.start();
+        this.waveGain = gainNode;
+    }
+
+    createMusicLoop() {
+        if (!this.ctx || this.musicGain) return;
+        const bus = this.ctx.createGain();
+        bus.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+        bus.connect(this.ctx.destination);
+        this.musicGain = bus;
+
+        // Melodia suave de expedição náutica em compasso lírico
+        const leadNotes = [
+            293.66, 369.99, 440.00, 587.33,
+            523.25, 440.00, 392.00, 329.63,
+            293.66, 369.99, 440.00, 493.88,
+            440.00, 392.00, 369.99, 329.63
+        ];
+        const padNotes = [
+            146.83, 0, 220.00, 0,
+            130.81, 0, 196.00, 0,
+            146.83, 0, 220.00, 0,
+            164.81, 0, 220.00, 0
+        ];
+
+        this.musicInterval = setInterval(() => {
+            if (!this.ctx || !this.musicEnabled || !this.musicGain || this.ctx.state !== 'running') return;
+            const i = this.stepIndex % leadNotes.length;
+            this.stepIndex++;
+            const now = this.ctx.currentTime;
+
+            const freq = leadNotes[i];
+            if (freq > 0) {
+                const osc = this.ctx.createOscillator();
+                const env = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now);
+
+                env.gain.setValueAtTime(0.0001, now);
+                env.gain.linearRampToValueAtTime(0.042, now + 0.04);
+                env.gain.exponentialRampToValueAtTime(0.0008, now + 0.44);
+
+                osc.connect(env);
+                env.connect(this.musicGain);
+                osc.start(now);
+                osc.stop(now + 0.46);
+            }
+
+            const bass = padNotes[i];
+            if (bass > 0) {
+                const bOsc = this.ctx.createOscillator();
+                const bEnv = this.ctx.createGain();
+                bOsc.type = 'sine';
+                bOsc.frequency.setValueAtTime(bass, now);
+
+                bEnv.gain.setValueAtTime(0.0001, now);
+                bEnv.gain.linearRampToValueAtTime(0.048, now + 0.05);
+                bEnv.gain.exponentialRampToValueAtTime(0.0008, now + 0.56);
+
+                bOsc.connect(bEnv);
+                bEnv.connect(this.musicGain);
+                bOsc.start(now);
+                bOsc.stop(now + 0.58);
+            }
+        }, 430);
+    }
+
+    applyMix() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        if (this.waveGain) {
+            this.waveGain.gain.setTargetAtTime(this.wavesEnabled ? 0.14 : 0.0001, now, 0.22);
+        }
+        if (this.musicGain) {
+            this.musicGain.gain.setTargetAtTime(this.musicEnabled ? 0.78 : 0.0001, now, 0.2);
+        }
+    }
+
+    tone(freq, type = 'sine', duration = 0.15, vol = 0.12, slideTo = null) {
+        if (!this.sfxEnabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, now);
+            if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
+
+            gain.gain.setValueAtTime(vol, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + duration);
+        } catch (e) {}
+    }
+
+    playCast() { this.tone(540, 'sine', 0.18, 0.12, 200); }
+    playSplash() { this.tone(175, 'triangle', 0.14, 0.14, 62); }
+    playHook(combo = 1, isTrophy = false) {
+        const base = 420 + combo * 70;
+        this.tone(base, 'triangle', 0.12, 0.15, base * 1.35);
+        if (isTrophy) {
+            setTimeout(() => this.tone(880, 'sine', 0.22, 0.14, 1175), 85);
+        }
+    }
+    playReelUp() { this.tone(310, 'sine', 0.11, 0.07, 460); }
+    playStoreHold() {
+        this.tone(523.25, 'triangle', 0.1, 0.11);
+        setTimeout(() => this.tone(659.25, 'triangle', 0.12, 0.11), 70);
+    }
+    playSell() {
+        this.tone(987.77, 'sine', 0.09, 0.13);
+        setTimeout(() => this.tone(1318.51, 'sine', 0.18, 0.13), 75);
+    }
+    playRelease() { this.tone(340, 'sine', 0.14, 0.09, 180); }
+    playUpgrade() {
+        [523.25, 659.25, 783.99, 1046.5].forEach((n, idx) => {
+            setTimeout(() => this.tone(n, 'triangle', 0.14, 0.13), idx * 65);
+        });
+    }
+    playFullAlert() {
+        this.tone(220, 'sawtooth', 0.14, 0.09, 155);
+        setTimeout(() => this.tone(185, 'sawtooth', 0.16, 0.09, 130), 120);
+    }
+
+    toggleMusic() {
+        this.musicEnabled = !this.musicEnabled;
+        this.init();
+        this.applyMix();
+        return this.musicEnabled;
+    }
+
+    toggleWaves() {
+        this.wavesEnabled = !this.wavesEnabled;
+        this.init();
+        this.applyMix();
+        return this.wavesEnabled;
+    }
+
+    toggleSfx() {
+        this.sfxEnabled = !this.sfxEnabled;
+        this.init();
+        return this.sfxEnabled;
+    }
+}
+
+const audio = new MaritimeAudioEngine();
+
+// ============================================================================
+// 2. CATÁLOGO DE 20 ESPÉCIES, 4 ZONAS OCEÂNICAS E NÍVEIS DO BARCO
+// ============================================================================
+const FISH_SPECIES = [
+    // ZONA 1: Recife de Coral (0m - 45m)
+    { id: 'lambari', name: 'Lambari Dourado', zone: 'Recife de Coral', minDepth: 2, maxDepth: 22, baseWeight: 0.25, baseValue: 5, speed: 38, baseRadius: 11, color: '#fbbf24', finColor: '#f59e0b', stripeColor: '#fef08a', rarity: 'Comum', shape: 'slim', behavior: 'swim' },
+    { id: 'sardinha', name: 'Sardinha Prateada', zone: 'Recife de Coral', minDepth: 4, maxDepth: 28, baseWeight: 0.4, baseValue: 7, speed: 52, baseRadius: 12, color: '#cbd5e1', finColor: '#64748b', stripeColor: '#38bdf8', rarity: 'Comum', shape: 'slim', behavior: 'dart' },
+    { id: 'palhaco', name: 'Peixe-Palhaço', zone: 'Recife de Coral', minDepth: 6, maxDepth: 32, baseWeight: 0.55, baseValue: 10, speed: 40, baseRadius: 13, color: '#f97316', finColor: '#ea580c', stripeColor: '#ffffff', rarity: 'Comum', shape: 'round', behavior: 'swim' },
+    { id: 'borboleta', name: 'Peixe-Borboleta', zone: 'Recife de Coral', minDepth: 10, maxDepth: 38, baseWeight: 0.8, baseValue: 14, speed: 44, baseRadius: 14, color: '#fde047', finColor: '#eab308', stripeColor: '#1e293b', rarity: 'Incomum', shape: 'disc', behavior: 'wave' },
+    { id: 'baiacu', name: 'Baiacu Espinhoso', zone: 'Recife de Coral', minDepth: 15, maxDepth: 45, baseWeight: 1.4, baseValue: 19, speed: 28, baseRadius: 16, color: '#a3e635', finColor: '#65a30d', stripeColor: '#ecfccb', rarity: 'Incomum', shape: 'puffer', behavior: 'swim' },
+
+    // ZONA 2: Zona Crepuscular (35m - 105m)
+    { id: 'cavala', name: 'Cavala Rajada', zone: 'Zona Crepuscular', minDepth: 35, maxDepth: 68, baseWeight: 2.8, baseValue: 28, speed: 64, baseRadius: 18, color: '#38bdf8', finColor: '#0284c7', stripeColor: '#e0f2fe', rarity: 'Incomum', shape: 'fusiform', behavior: 'dart' },
+    { id: 'robalo', name: 'Robalo Imperial', zone: 'Zona Crepuscular', minDepth: 42, maxDepth: 76, baseWeight: 4.2, baseValue: 36, speed: 46, baseRadius: 19, color: '#94a3b8', finColor: '#475569', stripeColor: '#f8fafc', rarity: 'Raro', shape: 'fusiform', behavior: 'swim' },
+    { id: 'dourado_mar', name: 'Dourado-do-Mar', zone: 'Zona Crepuscular', minDepth: 50, maxDepth: 88, baseWeight: 6.5, baseValue: 48, speed: 70, baseRadius: 21, color: '#facc15', finColor: '#22c55e', stripeColor: '#fef9c3', rarity: 'Raro', shape: 'fusiform', behavior: 'wave' },
+    { id: 'moreia', name: 'Moreia das Rochas', zone: 'Zona Crepuscular', minDepth: 62, maxDepth: 96, baseWeight: 8.0, baseValue: 58, speed: 34, baseRadius: 17, color: '#84cc16', finColor: '#3f6212', stripeColor: '#1a2e05', rarity: 'Raro', shape: 'eel', behavior: 'wave' },
+    { id: 'arraia_pintada', name: 'Arraia Pintada', zone: 'Zona Crepuscular', minDepth: 72, maxDepth: 105, baseWeight: 11.5, baseValue: 72, speed: 42, baseRadius: 23, color: '#6366f1', finColor: '#4338ca', stripeColor: '#e0e7ff', rarity: 'Épico', shape: 'ray', behavior: 'wave' },
+
+    // ZONA 3: Zona Abissal (95m - 200m)
+    { id: 'atum_azul', name: 'Atum Azul Gigante', zone: 'Zona Abissal', minDepth: 95, maxDepth: 135, baseWeight: 24.0, baseValue: 105, speed: 74, baseRadius: 25, color: '#1d4ed8', finColor: '#facc15', stripeColor: '#93c5fd', rarity: 'Raro', shape: 'tuna', behavior: 'dart' },
+    { id: 'peixe_lua', name: 'Peixe-Lua Real', zone: 'Zona Abissal', minDepth: 110, maxDepth: 150, baseWeight: 38.0, baseValue: 135, speed: 31, baseRadius: 26, color: '#cbd5e1', finColor: '#64748b', stripeColor: '#f1f5f9', rarity: 'Épico', shape: 'sunfish', behavior: 'swim' },
+    { id: 'espadarte', name: 'Espadarte do Oceano', zone: 'Zona Abissal', minDepth: 125, maxDepth: 168, baseWeight: 52.0, baseValue: 175, speed: 80, baseRadius: 24, color: '#0ea5e9', finColor: '#0369a1', stripeColor: '#bae6fd', rarity: 'Épico', shape: 'swordfish', behavior: 'dart' },
+    { id: 'tubarao_martelo', name: 'Tubarão-Martelo', zone: 'Zona Abissal', minDepth: 140, maxDepth: 185, baseWeight: 78.0, baseValue: 230, speed: 58, baseRadius: 27, color: '#64748b', finColor: '#334155', stripeColor: '#cbd5e1', rarity: 'Épico', shape: 'hammerhead', behavior: 'swim' },
+    { id: 'tamboril', name: 'Tamboril Luminescente', zone: 'Zona Abissal', minDepth: 158, maxDepth: 200, baseWeight: 46.0, baseValue: 280, speed: 29, baseRadius: 25, color: '#4c1d95', finColor: '#2e1065', stripeColor: '#22d3ee', rarity: 'Lendário', shape: 'angler', behavior: 'wave' },
+
+    // ZONA 4: Fossa Oceânica (190m - 340m)
+    { id: 'lula_colossal', name: 'Lula Colossal', zone: 'Fossa Oceânica', minDepth: 190, maxDepth: 240, baseWeight: 95.0, baseValue: 360, speed: 48, baseRadius: 28, color: '#e11d48', finColor: '#9f1239', stripeColor: '#fda4af', rarity: 'Épico', shape: 'squid', behavior: 'wave' },
+    { id: 'peixe_remo', name: 'Peixe-Remo Ancestral', zone: 'Fossa Oceânica', minDepth: 215, maxDepth: 270, baseWeight: 120.0, baseValue: 450, speed: 44, baseRadius: 25, color: '#f43f5e', finColor: '#fb7185', stripeColor: '#f8fafc', rarity: 'Lendário', shape: 'oarfish', behavior: 'wave' },
+    { id: 'tubarao_abissal', name: 'Tubarão Fantasma Abissal', zone: 'Fossa Oceânica', minDepth: 240, maxDepth: 295, baseWeight: 165.0, baseValue: 590, speed: 62, baseRadius: 30, color: '#1e293b', finColor: '#0f172a', stripeColor: '#38bdf8', rarity: 'Lendário', shape: 'shark', behavior: 'dart' },
+    { id: 'baleia_dourada', name: 'Baleia Dourada das Marés', zone: 'Fossa Oceânica', minDepth: 265, maxDepth: 320, baseWeight: 320.0, baseValue: 820, speed: 35, baseRadius: 34, color: '#f59e0b', finColor: '#b45309', stripeColor: '#fef08a', rarity: 'Lendário', shape: 'whale', behavior: 'swim' },
+    { id: 'leviata_abissal', name: 'Leviatã da Fossa', zone: 'Fossa Oceânica', minDepth: 290, maxDepth: 340, baseWeight: 480.0, baseValue: 1200, speed: 52, baseRadius: 36, color: '#06b6d4', finColor: '#0e7490', stripeColor: '#fde047', rarity: 'Mítico', shape: 'leviathan', behavior: 'wave' }
+];
+
+const BOAT_TIERS = [
+    { level: 1, name: 'Bote de Madeira', capacity: 5, scale: 1.0, hullColor: '#7c2d12', trimColor: '#f59e0b', hasCabin: false, hasMast: false, hasRadar: false },
+    { level: 2, name: 'Lancha Costeira', capacity: 10, scale: 1.12, hullColor: '#1e3a8a', trimColor: '#38bdf8', hasCabin: true, hasMast: false, hasRadar: false },
+    { level: 3, name: 'Barco de Arrasto', capacity: 18, scale: 1.24, hullColor: '#134e4a', trimColor: '#2dd4bf', hasCabin: true, hasMast: true, hasRadar: false },
+    { level: 4, name: 'Escuna Oceânica', capacity: 30, scale: 1.36, hullColor: '#451a03', trimColor: '#fbbf24', hasCabin: true, hasMast: true, hasRadar: true },
+    { level: 5, name: 'Navio Pesqueiro Mestre', capacity: 50, scale: 1.48, hullColor: '#0f172a', trimColor: '#facc15', hasCabin: true, hasMast: true, hasRadar: true }
+];
+
+function getBoatTierInfo(level) {
+    if (level <= BOAT_TIERS.length) return BOAT_TIERS[level - 1];
+    const extraLevels = level - BOAT_TIERS.length;
+    const base = BOAT_TIERS[BOAT_TIERS.length - 1];
+    return {
+        ...base,
+        level,
+        name: `${base.name} +${extraLevels}`,
+        capacity: base.capacity + extraLevels * 20,
+        scale: Math.min(1.65, base.scale + extraLevels * 0.04)
+    };
+}
+
+function getZoneNameForDepth(depth) {
+    if (depth < 40) return 'Recife de Coral';
+    if (depth < 100) return 'Zona Crepuscular';
+    if (depth < 195) return 'Zona Abissal';
+    return 'Fossa Oceânica';
+}
+
+function getRarityBadgeStyle(rarity) {
+    switch (rarity) {
+        case 'Comum': return 'bg-slate-800 text-slate-200 border-slate-500/40';
+        case 'Incomum': return 'bg-emerald-950 text-emerald-300 border-emerald-500/40';
+        case 'Raro': return 'bg-sky-950 text-sky-300 border-sky-500/40';
+        case 'Épico': return 'bg-purple-950 text-purple-300 border-purple-500/40';
+        case 'Lendário': return 'bg-amber-950 text-amber-300 border-amber-500/50';
+        case 'Mítico': return 'bg-rose-950 text-rose-300 border-rose-500/50';
+        default: return 'bg-slate-800 text-slate-200 border-slate-600/40';
+    }
+}
+
+// ============================================================================
+// 3. ESTADO DO JOGO & SALVAMENTO MANUAL (CARREGAR / SALVAR / RESET / SAIR)
+// ============================================================================
+const SAVE_SLOT_KEY = 'mestre_da_pesca_2d_manual_save_v1';
+const AUDIO_PREFS_KEY = 'mestre_da_pesca_2d_audio_prefs_v1';
+
+function createFreshUpgrades() {
+    return {
+        line: { level: 1, maxDepth: 30, cost: 15 },
+        hook: { level: 1, capacity: 1, cost: 25 },
+        reel: { level: 1, speedMult: 1.0, cost: 20 },
+        bait: { level: 1, bonusMult: 1.0, cost: 30 },
+        boat: { level: 1, capacity: 5, cost: 35 }
+    };
+}
+
+const gameState = {
+    screenMode: 'TITLE', // 'TITLE' | 'PLAYING'
+    coins: 0,
+    upgrades: createFreshUpgrades(),
+    inventory: [], // Peixes armazenados no Porão (não vendem automaticamente)
+    records: {},   // records[speciesId] = { count, maxWeight, maxValue }
+    fishingState: 'IDLE', // 'IDLE' | 'DESCENDING' | 'REELING'
+    steerDir: 0, // -1 esquerda, 0 parado, 1 direita
+    cameraY: 0,
+    targetCameraY: 0,
+    waterLevelY: 155,
+    boat: {
+        x: 260,
+        y: 155,
+        bobAngle: 0,
+        rodBend: 0,
+        rodTipX: 340,
+        rodTipY: 95
+    },
+    hook: {
+        x: 340,
+        y: 115,
+        targetX: 340,
+        depthMeters: 0,
+        caughtFish: []
+    },
+    fishes: [],
+    bubbles: [],
+    particles: [],
+    floatingTexts: [],
+    clouds: [],
+    seagulls: [],
+    corals: [],
+    seaweeds: [],
+    bgSilhouettes: []
+};
+
+const PIXELS_PER_METER = 18;
+
+function saveAudioPrefs() {
+    try {
+        localStorage.setItem(AUDIO_PREFS_KEY, JSON.stringify({
+            music: audio.musicEnabled,
+            waves: audio.wavesEnabled,
+            sfx: audio.sfxEnabled
+        }));
+    } catch (e) {
+        console.warn('Falha ao salvar preferências de áudio:', e);
+    }
+}
+
+function loadAudioPrefs() {
+    try {
+        const raw = localStorage.getItem(AUDIO_PREFS_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        audio.musicEnabled = parsed.music ?? true;
+        audio.wavesEnabled = parsed.waves ?? true;
+        audio.sfxEnabled = parsed.sfx ?? true;
+    } catch (e) {
+        console.warn('Falha ao carregar preferências de áudio:', e);
+    }
+}
+
+function hasSavedGame() {
+    try {
+        return Boolean(localStorage.getItem(SAVE_SLOT_KEY));
+    } catch (e) {
+        return false;
+    }
+}
+
+function saveManualGame() {
+    try {
+        const payload = {
+            coins: gameState.coins,
+            upgrades: gameState.upgrades,
+            inventory: gameState.inventory,
+            records: gameState.records,
+            savedAt: Date.now()
+        };
+        localStorage.setItem(SAVE_SLOT_KEY, JSON.stringify(payload));
+        updateTitleSaveAvailability();
+        return true;
+    } catch (e) {
+        console.warn('Falha ao salvar jogo:', e);
+        return false;
+    }
+}
+
+function loadSavedGameIntoSession() {
+    try {
+        const raw = localStorage.getItem(SAVE_SLOT_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+
+        const fresh = createFreshUpgrades();
+        if (parsed.upgrades) {
+            for (const key of Object.keys(fresh)) {
+                if (parsed.upgrades[key]) {
+                    fresh[key] = { ...fresh[key], ...parsed.upgrades[key] };
+                }
+            }
+        }
+        const boatInfo = getBoatTierInfo(fresh.boat.level);
+        fresh.boat.capacity = boatInfo.capacity;
+
+        gameState.coins = typeof parsed.coins === 'number' ? parsed.coins : 0;
+        gameState.upgrades = fresh;
+        gameState.inventory = Array.isArray(parsed.inventory) ? parsed.inventory : [];
+        gameState.records = (parsed.records && typeof parsed.records === 'object') ? parsed.records : {};
+
+        resetActiveHookAndEffects();
+        populateFishes();
+        updateHUD();
+        updateHookHUD();
+        return true;
+    } catch (e) {
+        console.warn('Falha ao carregar jogo salvo:', e);
+        return false;
+    }
+}
+
+function resetActiveHookAndEffects() {
+    gameState.fishingState = 'IDLE';
+    setSteer(0);
+    gameState.hook.caughtFish = [];
+    gameState.hook.depthMeters = 0;
+    gameState.cameraY = 0;
+    gameState.targetCameraY = 0;
+    gameState.particles = [];
+    gameState.floatingTexts = [];
+    document.getElementById('castPrompt').classList.remove('opacity-0');
+    document.getElementById('catchSummary').classList.add('hidden');
+}
+
+function resetSessionProgressOnly() {
+    // Reinicia tudo da sessão atual, preservando o slot de salvamento para o botão Carregar
+    gameState.coins = 0;
+    gameState.upgrades = createFreshUpgrades();
+    gameState.inventory = [];
+    gameState.records = {};
+    resetActiveHookAndEffects();
+    populateFishes();
+    updateHUD();
+    updateHookHUD();
+    updateTitleSaveAvailability();
+}
+
+function setScreenMode(mode) {
+    gameState.screenMode = mode;
+    const isTitle = mode === 'TITLE';
+
+    const titleScreen = document.getElementById('titleScreen');
+    titleScreen.classList.toggle('hidden', !isTitle);
+    titleScreen.style.display = isTitle ? 'flex' : 'none';
+
+    document.getElementById('hudTop').classList.toggle('hidden', isTitle);
+    document.getElementById('hookControls').classList.toggle('hidden', isTitle);
+    document.getElementById('castPrompt').classList.toggle('hidden', isTitle || gameState.fishingState !== 'IDLE');
+
+    if (isTitle) {
+        setSteer(0);
+        document.getElementById('shopPanel').classList.add('hidden');
+        document.getElementById('inventoryPanel').classList.add('hidden');
+        document.getElementById('catalogPanel').classList.add('hidden');
+        document.getElementById('gameMenuPanel').classList.add('hidden');
+        document.getElementById('holdFullBanner').classList.add('hidden');
+        updateTitleSaveAvailability();
+    } else {
+        document.getElementById('creditsPanel').classList.add('hidden');
+        updateHUD();
+        updateHookHUD();
+    }
+}
+
+function updateTitleSaveAvailability() {
+    const btnLoad = document.getElementById('btnLoadGame');
+    const statusEl = document.getElementById('titleSaveStatus');
+    const exists = hasSavedGame();
+
+    btnLoad.disabled = !exists;
+    if (exists) {
+        try {
+            const saved = JSON.parse(localStorage.getItem(SAVE_SLOT_KEY));
+            const savedCoins = typeof saved.coins === 'number' ? saved.coins : 0;
+            const savedHold = Array.isArray(saved.inventory) ? saved.inventory.length : 0;
+            statusEl.textContent = `Jogo salvo disponível: $${savedCoins.toLocaleString('pt-BR')} • ${savedHold} peixe(s) no porão`;
+            statusEl.className = 'text-xs text-teal-300 font-semibold min-h-[1.25rem]';
+        } catch (e) {
+            statusEl.textContent = 'Jogo salvo disponível';
+        }
+    } else {
+        statusEl.textContent = 'Nenhum jogo salvo ainda';
+        statusEl.className = 'text-xs text-slate-400 font-medium min-h-[1.25rem]';
+    }
+}
+
+// ============================================================================
+// 4. CANVAS, CENÁRIO EM PARALAXE E GERAÇÃO DE PEIXES COM VARIAÇÃO INDIVIDUAL
+// ============================================================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let width = (canvas.width = window.innerWidth);
+let height = (canvas.height = window.innerHeight);
+
+function initScenario() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+
+    gameState.waterLevelY = Math.max(125, Math.min(185, height * 0.25));
+    gameState.boat.x = Math.max(120, Math.min(width * 0.24, 340));
+    gameState.boat.y = gameState.waterLevelY;
+
+    gameState.clouds = [];
+    for (let i = 0; i < 6; i++) {
+        gameState.clouds.push({
+            x: (width / 5) * i + Math.random() * 80,
+            y: 26 + Math.random() * 65,
+            scale: 0.65 + Math.random() * 0.55,
+            speed: 8 + Math.random() * 11
+        });
+    }
+
+    gameState.seagulls = [];
+    for (let i = 0; i < 5; i++) {
+        gameState.seagulls.push({
+            x: Math.random() * width,
+            y: 38 + Math.random() * 68,
+            scale: 0.6 + Math.random() * 0.45,
+            speed: 24 + Math.random() * 20,
+            wingPhase: Math.random() * Math.PI * 2
+        });
+    }
+
+    gameState.corals = [];
+    for (let i = 0; i < 18; i++) {
+        gameState.corals.push({
+            x: (width / 16) * i + (Math.random() - 0.5) * 35,
+            depthMeters: 16 + Math.random() * 280,
+            color: ['#f43f5e', '#fb923c', '#c084fc', '#2dd4bf', '#facc15'][i % 5],
+            size: 16 + Math.random() * 22
+        });
+    }
+
+    gameState.seaweeds = [];
+    for (let i = 0; i < 24; i++) {
+        gameState.seaweeds.push({
+            x: (width / 22) * i + (Math.random() - 0.5) * 28,
+            depthMeters: 10 + Math.random() * 310,
+            segments: 4 + Math.floor(Math.random() * 4),
+            segHeight: 11 + Math.random() * 8,
+            color: i % 2 === 0 ? '#15803d' : '#0f766e',
+            phase: Math.random() * Math.PI * 2
+        });
+    }
+
+    gameState.bgSilhouettes = [];
+    for (let i = 0; i < 16; i++) {
+        gameState.bgSilhouettes.push({
+            x: Math.random() * width,
+            depthMeters: 25 + Math.random() * 310,
+            size: 22 + Math.random() * 44,
+            speed: (14 + Math.random() * 22) * (Math.random() < 0.5 ? -1 : 1),
+            phase: Math.random() * Math.PI * 2
+        });
+    }
+}
+
+window.addEventListener('resize', () => {
+    initScenario();
+    repositionFishesHorizontally();
+});
+
+function repositionFishesHorizontally() {
+    gameState.fishes.forEach(f => {
+        if (f.x > width + 60) f.x = Math.random() * width;
+    });
+}
+
+function getSizeLabel(sizeFactor) {
+    if (sizeFactor >= 1.42) return 'Troféu';
+    if (sizeFactor >= 1.18) return 'Grande';
+    if (sizeFactor <= 0.8) return 'Pequeno';
+    return 'Médio';
+}
+
+function createFishInstance(species, depthMeters = null, startX = null) {
+    const minD = species.minDepth;
+    const maxD = species.maxDepth;
+    const chosenDepth = depthMeters !== null
+        ? Math.max(minD, Math.min(maxD, depthMeters))
+        : minD + Math.random() * (maxD - minD);
+
+    // Variação individual de tamanho (0.65x pequeno até 1.65x gigante/troféu)
+    const baitBonusChance = (gameState.upgrades.bait.level - 1) * 0.04;
+    let sizeFactor = 0.65 + Math.random() * 1.0;
+    if (Math.random() < baitBonusChance) {
+        sizeFactor = Math.max(sizeFactor, 1.38 + Math.random() * 0.27);
+    }
+    sizeFactor = Number(sizeFactor.toFixed(2));
+
+    // Peso e valor escalam de forma clara com o tamanho individual do peixe
+    const weight = Number((species.baseWeight * Math.pow(sizeFactor, 1.85)).toFixed(2));
+    const baitMult = gameState.upgrades.bait.bonusMult;
+    const trophyBonus = sizeFactor >= 1.4 ? 1.25 : (sizeFactor >= 1.18 ? 1.1 : 1.0);
+    const value = Math.max(1, Math.round(species.baseValue * Math.pow(sizeFactor, 1.6) * baitMult * trophyBonus));
+
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    const x = startX !== null ? startX : Math.random() * width;
+    const y = gameState.waterLevelY + chosenDepth * PIXELS_PER_METER;
+
+    return {
+        uid: `${species.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        speciesId: species.id,
+        name: species.name,
+        zone: species.zone,
+        rarity: species.rarity,
+        shape: species.shape,
+        behavior: species.behavior,
+        color: species.color,
+        finColor: species.finColor,
+        stripeColor: species.stripeColor,
+        baseRadius: species.baseRadius,
+        sizeFactor,
+        sizeLabel: getSizeLabel(sizeFactor),
+        isTrophy: sizeFactor >= 1.4,
+        weight,
+        value,
+        depthMeters: Math.round(chosenDepth),
+        x,
+        y,
+        baseY: y,
+        vx: dir * species.speed * (0.85 + Math.random() * 0.35),
+        dir,
+        swimPhase: Math.random() * Math.PI * 2,
+        caught: false,
+        caughtAt: null
+    };
+}
+
+function populateFishes() {
+    gameState.fishes = [];
+    const totalCount = 95;
+    for (let i = 0; i < totalCount; i++) {
+        const species = FISH_SPECIES[i % FISH_SPECIES.length];
+        gameState.fishes.push(createFishInstance(species));
+    }
+}
+
+// ============================================================================
+// 5. PARTÍCULAS, TEXTOS FLUTUANTES E NOTIFICAÇÕES
+// ============================================================================
+function addFloatingText(x, y, text, color = '#fde047', size = 16) {
+    gameState.floatingTexts.push({
+        x,
+        y,
+        text,
+        color,
+        size,
+        alpha: 1,
+        vy: -36
+    });
+}
+
+function createSplash(x, y, count = 10) {
+    for (let i = 0; i < count; i++) {
+        const angle = -Math.PI * Math.random();
+        const speed = 45 + Math.random() * 130;
+        gameState.particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 35,
+            radius: 2 + Math.random() * 3.5,
+            color: i % 2 === 0 ? '#e0f2fe' : '#7dd3fc',
+            alpha: 1,
+            life: 0.55 + Math.random() * 0.25
+        });
+    }
+}
+
+function createCatchSparkles(x, y, isTrophy = false) {
+    const count = isTrophy ? 18 : 10;
+    for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count;
+        const speed = isTrophy ? 85 : 55;
+        gameState.particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            radius: isTrophy ? 4 : 2.8,
+            color: isTrophy ? '#facc15' : '#5eead4',
+            alpha: 1,
+            life: 0.65
+        });
+    }
+}
+
+let summaryTimeout = null;
+function showHoldNotification(storedList, overflowCount) {
+    const box = document.getElementById('catchSummary');
+    const titleEl = document.getElementById('catchSummaryTitle');
+    const badgeEl = document.getElementById('catchSummaryBadge');
+    const listEl = document.getElementById('catchItemsText');
+    const warnEl = document.getElementById('catchSummaryWarning');
+
+    const maxCap = gameState.upgrades.boat.capacity;
+    const curCap = gameState.inventory.length;
+    badgeEl.textContent = `${curCap}/${maxCap}`;
+
+    if (storedList.length === 0 && overflowCount === 0) {
+        box.classList.add('hidden');
+        return;
+    }
+
+    if (storedList.length > 0) {
+        titleEl.textContent = 'Guardado no Porão!';
+        listEl.innerHTML = storedList.map(item => {
+            const trophyMark = item.isTrophy ? ' 🏆' : '';
+            return `<div class="flex justify-between gap-2">
+                <span class="truncate font-semibold text-white">${item.name}${trophyMark} <span class="text-slate-400 font-normal">(${item.sizeLabel}, ${item.weight}kg)</span></span>
+                <span class="text-amber-300 font-bold shrink-0">$${item.value}</span>
+            </div>`;
+        }).join('');
+    } else {
+        titleEl.textContent = 'Porão Lotado!';
+        listEl.innerHTML = `<div class="text-rose-300 font-semibold">Nenhum espaço disponível no porão.</div>`;
+    }
+
+    if (overflowCount > 0) {
+        warnEl.textContent = `${overflowCount} peixe(s) não couberam no porão! Abra o Porão para vender ou liberar espaço.`;
+        warnEl.classList.remove('hidden');
+    } else {
+        warnEl.classList.add('hidden');
+    }
+
+    box.classList.remove('hidden');
+    if (summaryTimeout) clearTimeout(summaryTimeout);
+    summaryTimeout = setTimeout(() => {
+        box.classList.add('hidden');
+    }, 3600);
+}
+
+// ============================================================================
+// 6. CONTROLES: CLIQUE/TOQUE PARA LANÇAR + SETINHAS PARA GUIAR O ANZOL
+// ============================================================================
+function isClickOnUi(target) {
+    return Boolean(
+        gameState.screenMode !== 'PLAYING' ||
+        target.closest('button') ||
+        target.closest('#titleScreen') ||
+        target.closest('#creditsPanel') ||
+        target.closest('#gameMenuPanel') ||
+        target.closest('#shopPanel') ||
+        target.closest('#inventoryPanel') ||
+        target.closest('#catalogPanel') ||
+        target.closest('#portraitBanner') ||
+        target.closest('#holdFullBanner')
+    );
+}
+
+function setSteer(dir) {
+    gameState.steerDir = dir;
+    document.getElementById('btnSteerLeft').classList.toggle('active-steer', dir === -1);
+    document.getElementById('btnSteerRight').classList.toggle('active-steer', dir === 1);
+}
+
+// Clique/toque no canvas apenas arremessa quando o jogo está em partida e ocioso
+canvas.addEventListener('pointerdown', (e) => {
+    if (gameState.screenMode !== 'PLAYING') return;
+    if (isClickOnUi(e.target)) return;
+    audio.init();
+    if (gameState.fishingState === 'IDLE') {
+        startCast();
+    }
+});
+
+function attachArrowButton(btnId, dir) {
+    const btn = document.getElementById(btnId);
+    const press = (e) => {
+        if (gameState.screenMode !== 'PLAYING') return;
+        e.preventDefault();
+        e.stopPropagation();
+        audio.init();
+        setSteer(dir);
+    };
+    const release = (e) => {
+        if (e) e.stopPropagation();
+        if (gameState.steerDir === dir) setSteer(0);
+    };
+
+    btn.addEventListener('pointerdown', press);
+    btn.addEventListener('pointerup', release);
+    btn.addEventListener('pointerleave', release);
+    btn.addEventListener('pointercancel', release);
+}
+
+attachArrowButton('btnSteerLeft', -1);
+attachArrowButton('btnSteerRight', 1);
+
+window.addEventListener('pointerup', () => {
+    if (gameState.steerDir !== 0) setSteer(0);
+});
+
+window.addEventListener('keydown', (e) => {
+    if (gameState.screenMode !== 'PLAYING') return;
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        setSteer(-1);
+    } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        setSteer(1);
+    } else if (e.key === ' ' && gameState.fishingState === 'IDLE') {
+        audio.init();
+        startCast();
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if ((e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') && gameState.steerDir === -1) {
+        setSteer(0);
+    } else if ((e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') && gameState.steerDir === 1) {
+        setSteer(0);
+    }
+});
+
+// ============================================================================
+// 7. CICLO DE PESCA, BESTIÁRIO E ARMAZENAMENTO NO PORÃO (SEM AUTO-VENDA)
+// ============================================================================
+function startCast() {
+    if (gameState.fishingState !== 'IDLE') return;
+
+    const maxHold = gameState.upgrades.boat.capacity;
+    if (gameState.inventory.length >= maxHold) {
+        audio.playFullAlert();
+        addFloatingText(gameState.boat.x + 20, gameState.boat.y - 70, 'Porão Cheio!', '#fb7185', 20);
+        updateHUD();
+        return;
+    }
+
+    gameState.fishingState = 'DESCENDING';
+    gameState.hook.caughtFish = [];
+    gameState.hook.x = gameState.boat.rodTipX;
+    gameState.hook.y = gameState.boat.rodTipY + 12;
+    gameState.hook.targetX = Math.min(width - 70, gameState.boat.rodTipX + 90);
+
+    document.getElementById('castPrompt').classList.add('opacity-0');
+    updateHookHUD();
+    audio.playCast();
+    createSplash(gameState.hook.targetX, gameState.waterLevelY, 9);
+}
+
+function updateHookHUD() {
+    const caught = gameState.hook.caughtFish.length;
+    const cap = gameState.upgrades.hook.capacity;
+    document.getElementById('hookCountDisplay').textContent = `${caught}/${cap}`;
+
+    const stateEl = document.getElementById('hookStateText');
+    if (gameState.fishingState === 'IDLE') stateEl.textContent = 'Pronto';
+    else if (gameState.fishingState === 'DESCENDING') stateEl.textContent = 'Descendo';
+    else if (gameState.fishingState === 'REELING') stateEl.textContent = 'Recolhendo';
+}
+
+function registerBestiaryRecord(fish) {
+    const prev = gameState.records[fish.speciesId] || {
+        count: 0,
+        maxWeight: 0,
+        maxValue: 0
+    };
+    gameState.records[fish.speciesId] = {
+        count: prev.count + 1,
+        maxWeight: Math.max(prev.maxWeight, fish.weight),
+        maxValue: Math.max(prev.maxValue, fish.value)
+    };
+}
+
+function finishCastAndStoreInHold() {
+    gameState.fishingState = 'IDLE';
+    setSteer(0);
+    gameState.targetCameraY = 0;
+
+    document.getElementById('castPrompt').classList.remove('opacity-0');
+    updateHookHUD();
+
+    const caughtList = gameState.hook.caughtFish;
+    gameState.hook.caughtFish = [];
+
+    if (caughtList.length === 0) {
+        return;
+    }
+
+    const maxHold = gameState.upgrades.boat.capacity;
+    const stored = [];
+    let overflow = 0;
+
+    for (const fish of caughtList) {
+        registerBestiaryRecord(fish);
+
+        if (gameState.inventory.length < maxHold) {
+            const holdItem = {
+                uid: fish.uid,
+                speciesId: fish.speciesId,
+                name: fish.name,
+                zone: fish.zone,
+                rarity: fish.rarity,
+                sizeFactor: fish.sizeFactor,
+                sizeLabel: fish.sizeLabel,
+                isTrophy: fish.isTrophy,
+                weight: fish.weight,
+                value: fish.value,
+                depthMeters: fish.depthMeters,
+                color: fish.color,
+                finColor: fish.finColor,
+                stripeColor: fish.stripeColor,
+                shape: fish.shape
+            };
+            gameState.inventory.push(holdItem);
+            stored.push(holdItem);
+        } else {
+            overflow++;
+        }
+
+        // Repõe o peixe no oceano após a captura
+        const speciesObj = FISH_SPECIES.find(s => s.id === fish.speciesId);
+        if (speciesObj) {
+            const edgeX = Math.random() < 0.5 ? -35 : width + 35;
+            gameState.fishes.push(createFishInstance(speciesObj, null, edgeX));
+        }
+    }
+
+    if (stored.length > 0) {
+        audio.playStoreHold();
+        const labelText = stored.length === 1
+            ? `+1 ${stored[0].name} no Porão!`
+            : `+${stored.length} peixes no Porão!`;
+        addFloatingText(gameState.boat.x + 30, gameState.boat.y - 78, labelText, '#2dd4bf', 19);
+    }
+
+    if (overflow > 0) {
+        audio.playFullAlert();
+        addFloatingText(gameState.boat.x + 30, gameState.boat.y - 102, `Porão cheio (${overflow} solto)!`, '#fb7185', 16);
+    }
+
+    showHoldNotification(stored, overflow);
+    updateHUD();
+}
+
+// ============================================================================
+// 8. LOOP DE ATUALIZAÇÃO (UPDATE)
+// ============================================================================
+let lastTime = performance.now();
+let elapsedTime = 0;
+
+function update(dt) {
+    elapsedTime += dt;
+
+    // Nuvens e gaivotas
+    gameState.clouds.forEach(c => {
+        c.x += c.speed * dt;
+        if (c.x > width + 150) c.x = -150;
+    });
+
+    gameState.seagulls.forEach(g => {
+        g.x += g.speed * dt;
+        g.wingPhase += dt * 7.2;
+        if (g.x > width + 80) g.x = -80;
+    });
+
+    // Movimento ondulatório do barco e envergadura da vara
+    const boatTier = getBoatTierInfo(gameState.upgrades.boat.level);
+    gameState.boat.y = gameState.waterLevelY + Math.sin(elapsedTime * 2.1) * 4.2;
+    gameState.boat.bobAngle = Math.cos(elapsedTime * 2.1) * 0.035;
+
+    const hookWeight = gameState.hook.caughtFish.reduce((acc, f) => acc + f.weight, 0);
+    const targetBend = gameState.fishingState === 'IDLE' ? 0 : Math.min(28, 6 + hookWeight * 0.35);
+    gameState.boat.rodBend += (targetBend - gameState.boat.rodBend) * Math.min(1, 8 * dt);
+
+    gameState.boat.rodTipX = gameState.boat.x + 84 * boatTier.scale;
+    gameState.boat.rodTipY = gameState.boat.y - 62 * boatTier.scale + gameState.boat.rodBend;
+
+    // Movimento do anzol via setinhas (esquerda / direita) e velocidade da carretilha
+    const reelMult = gameState.upgrades.reel.speedMult;
+    const maxDepthPx = gameState.waterLevelY + gameState.upgrades.line.maxDepth * PIXELS_PER_METER;
+    const hookCap = gameState.upgrades.hook.capacity;
+    // Ritmo base mais lento da linha e do anzol para dar mais controle antes dos upgrades de Carretilha
+    const steerSpeed = 135 * reelMult;
+
+    if (gameState.fishingState === 'IDLE') {
+        gameState.hook.x = gameState.boat.rodTipX;
+        gameState.hook.y = gameState.boat.rodTipY + 20 + Math.sin(elapsedTime * 4) * 3;
+        gameState.hook.depthMeters = 0;
+        gameState.targetCameraY = 0;
+    } else if (gameState.fishingState === 'DESCENDING') {
+        if (gameState.steerDir !== 0) {
+            gameState.hook.targetX = Math.max(32, Math.min(width - 32, gameState.hook.targetX + gameState.steerDir * steerSpeed * dt));
+        }
+        gameState.hook.x += (gameState.hook.targetX - gameState.hook.x) * Math.min(1, 6.2 * reelMult * dt);
+        gameState.hook.y += 120 * reelMult * dt;
+
+        if (gameState.hook.y >= maxDepthPx) {
+            gameState.hook.y = maxDepthPx;
+            gameState.fishingState = 'REELING';
+            audio.playReelUp();
+            updateHookHUD();
+        }
+    } else if (gameState.fishingState === 'REELING') {
+        if (gameState.steerDir !== 0) {
+            gameState.hook.targetX = Math.max(32, Math.min(width - 32, gameState.hook.targetX + gameState.steerDir * steerSpeed * dt));
+        }
+        gameState.hook.x += (gameState.hook.targetX - gameState.hook.x) * Math.min(1, 6.5 * reelMult * dt);
+        gameState.hook.y -= (145 + gameState.hook.caughtFish.length * 8) * reelMult * dt;
+
+        if (Math.abs(gameState.hook.y - gameState.waterLevelY) < 8) {
+            createSplash(gameState.hook.x, gameState.waterLevelY, 10);
+        }
+
+        if (gameState.hook.y <= gameState.boat.rodTipY + 14) {
+            finishCastAndStoreInHold();
+        }
+    }
+
+    // Profundidade e câmera
+    if (gameState.fishingState === 'IDLE') {
+        gameState.hook.depthMeters = 0;
+        gameState.targetCameraY = 0;
+    } else {
+        const rawMeters = Math.max(0, (gameState.hook.y - gameState.waterLevelY) / PIXELS_PER_METER);
+        gameState.hook.depthMeters = Math.round(rawMeters);
+        const desiredCam = gameState.hook.y - height * 0.44;
+        gameState.targetCameraY = Math.max(0, desiredCam);
+    }
+
+    gameState.cameraY += (gameState.targetCameraY - gameState.cameraY) * Math.min(1, 6.5 * dt);
+
+    // Atualiza HUD de profundidade e zona apenas em partida
+    if (gameState.screenMode === 'PLAYING') {
+        const curDepth = gameState.hook.depthMeters;
+        document.getElementById('depthDisplay').textContent = `${curDepth}m`;
+        const zoneBadge = document.getElementById('zoneBadge');
+        if (zoneBadge) {
+            zoneBadge.textContent = getZoneNameForDepth(curDepth);
+        }
+    }
+
+    // Silhuetas de fundo em paralaxe
+    gameState.bgSilhouettes.forEach(sil => {
+        sil.x += sil.speed * dt;
+        sil.phase += dt * 2.2;
+        if (sil.speed > 0 && sil.x > width + 90) sil.x = -90;
+        if (sil.speed < 0 && sil.x < -90) sil.x = width + 90;
+    });
+
+    // Atualiza peixes livres e fisgados
+    for (let i = gameState.fishes.length - 1; i >= 0; i--) {
+        const f = gameState.fishes[i];
+        f.swimPhase += dt * (f.behavior === 'dart' ? 11 : 7);
+
+        if (!f.caught) {
+            f.x += f.vx * dt;
+            if (f.behavior === 'wave') {
+                f.y = f.baseY + Math.sin(f.swimPhase * 0.5) * 14;
+            } else if (f.behavior === 'dart') {
+                f.y = f.baseY + Math.cos(f.swimPhase * 0.8) * 7;
+            }
+
+            if (f.vx > 0 && f.x > width + 55) {
+                f.x = -55;
+                f.baseY = gameState.waterLevelY + (f.depthMeters + (Math.random() - 0.5) * 8) * PIXELS_PER_METER;
+            } else if (f.vx < 0 && f.x < -55) {
+                f.x = width + 55;
+                f.baseY = gameState.waterLevelY + (f.depthMeters + (Math.random() - 0.5) * 8) * PIXELS_PER_METER;
+            }
+
+            // Verifica colisão com o anzol durante descida ou recolhimento
+            if (
+                (gameState.fishingState === 'DESCENDING' || gameState.fishingState === 'REELING') &&
+                gameState.hook.caughtFish.length < hookCap &&
+                gameState.hook.y > gameState.waterLevelY + 8
+            ) {
+                const dx = f.x - gameState.hook.x;
+                const dy = f.y - gameState.hook.y;
+                const hitRadius = f.baseRadius * f.sizeFactor + 18;
+                if (dx * dx + dy * dy <= hitRadius * hitRadius) {
+                    f.caught = true;
+                    f.caughtAt = performance.now();
+                    gameState.hook.caughtFish.push(f);
+                    gameState.fishes.splice(i, 1);
+
+                    if (gameState.fishingState === 'DESCENDING') {
+                        gameState.fishingState = 'REELING';
+                        audio.playReelUp();
+                    }
+
+                    audio.playHook(gameState.hook.caughtFish.length, f.isTrophy);
+                    createCatchSparkles(f.x, f.y, f.isTrophy);
+                    updateHookHUD();
+
+                    const tag = f.isTrophy ? '🏆 TROFÉU! ' : '';
+                    addFloatingText(
+                        f.x,
+                        f.y - 14,
+                        `${tag}${f.name} (${f.weight}kg)`,
+                        f.isTrophy ? '#fde047' : '#5eead4',
+                        f.isTrophy ? 17 : 14
+                    );
+
+                    if (gameState.hook.caughtFish.length >= hookCap) {
+                        gameState.fishingState = 'REELING';
+                    }
+                }
+            }
+        }
+    }
+
+    // Posiciona peixes fisgados ao longo do anzol
+    gameState.hook.caughtFish.forEach((cf, idx) => {
+        const offsetY = 18 + idx * 24;
+        cf.x = gameState.hook.x + Math.sin(elapsedTime * 14 + idx) * 5;
+        cf.y = gameState.hook.y + offsetY;
+        cf.dir = idx % 2 === 0 ? 1 : -1;
+    });
+
+    // Bolhas ambiente
+    if (Math.random() < 0.28) {
+        gameState.bubbles.push({
+            x: Math.random() * width,
+            y: gameState.waterLevelY + 25 + Math.random() * (height * 1.4),
+            radius: 1.5 + Math.random() * 4,
+            speedY: 28 + Math.random() * 45,
+            wobble: Math.random() * Math.PI * 2
+        });
+    }
+    for (let i = gameState.bubbles.length - 1; i >= 0; i--) {
+        const b = gameState.bubbles[i];
+        b.y -= b.speedY * dt;
+        b.wobble += dt * 4;
+        b.x += Math.cos(b.wobble) * 14 * dt;
+        if (b.y < gameState.waterLevelY) {
+            gameState.bubbles.splice(i, 1);
+        }
+    }
+
+    // Partículas
+    for (let i = gameState.particles.length - 1; i >= 0; i--) {
+        const p = gameState.particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 240 * dt;
+        p.life -= dt;
+        p.alpha = Math.max(0, p.life / 0.65);
+        if (p.life <= 0) gameState.particles.splice(i, 1);
+    }
+
+    // Textos flutuantes
+    for (let i = gameState.floatingTexts.length - 1; i >= 0; i--) {
+        const ft = gameState.floatingTexts[i];
+        ft.y += ft.vy * dt;
+        ft.alpha -= dt * 0.72;
+        if (ft.alpha <= 0) gameState.floatingTexts.splice(i, 1);
+    }
+}
+
+// ============================================================================
+// 9. RENDERIZAÇÃO VISUAL 2D (PÔR DO SOL, ZONAS, PARALAXE, BARCO & 20 ESPÉCIES)
+// ============================================================================
+function draw() {
+    ctx.clearRect(0, 0, width, height);
+    const camY = gameState.cameraY;
+    const waterScreenY = gameState.waterLevelY - camY;
+
+    // 1. Céu de Pôr do Sol Dourado & Azul-Petróleo
+    if (waterScreenY > 0) {
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, Math.max(90, waterScreenY));
+        skyGrad.addColorStop(0, '#071b33');
+        skyGrad.addColorStop(0.52, '#1a4a6e');
+        skyGrad.addColorStop(0.84, '#df7634');
+        skyGrad.addColorStop(1, '#fbd38d');
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, width, waterScreenY + 8);
+
+        // Sol poente com halo dourado
+        const sunX = width * 0.82;
+        const sunY = Math.max(46, waterScreenY - 24 - camY * 0.25);
+        if (sunY > -100) {
+            ctx.save();
+            const glow = ctx.createRadialGradient(sunX, sunY, 8, sunX, sunY, 115);
+            glow.addColorStop(0, 'rgba(254, 249, 195, 0.98)');
+            glow.addColorStop(0.35, 'rgba(251, 191, 36, 0.45)');
+            glow.addColorStop(1, 'rgba(249, 115, 22, 0)');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(sunX, sunY, 115, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#fef9c3';
+            ctx.beginPath();
+            ctx.arc(sunX, sunY, 25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        drawDistantIslands(waterScreenY);
+
+        gameState.clouds.forEach(c => {
+            const cy = c.y - camY * 0.45;
+            if (cy > -60 && cy < waterScreenY) drawCloud(c.x, cy, c.scale);
+        });
+
+        gameState.seagulls.forEach(g => {
+            const gy = g.y - camY * 0.4;
+            if (gy > -30 && gy < waterScreenY) drawSeagull(g.x, gy, g.wingPhase, g.scale);
+        });
+    }
+
+    // 2. Gradiente das 4 Zonas Submarinas
+    const oceanTop = Math.max(0, waterScreenY);
+    if (oceanTop < height) {
+        const depthFactor = Math.min(1, camY / (260 * PIXELS_PER_METER));
+        const oceanGrad = ctx.createLinearGradient(0, oceanTop, 0, height);
+        if (depthFactor < 0.26) {
+            oceanGrad.addColorStop(0, '#0c4a6e');
+            oceanGrad.addColorStop(0.55, '#083344');
+            oceanGrad.addColorStop(1, '#042f2e');
+        } else if (depthFactor < 0.58) {
+            oceanGrad.addColorStop(0, '#083344');
+            oceanGrad.addColorStop(0.55, '#091e3a');
+            oceanGrad.addColorStop(1, '#061321');
+        } else {
+            oceanGrad.addColorStop(0, '#091e3a');
+            oceanGrad.addColorStop(0.55, '#040b14');
+            oceanGrad.addColorStop(1, '#010409');
+        }
+        ctx.fillStyle = oceanGrad;
+        ctx.fillRect(0, oceanTop, width, height - oceanTop);
+
+        // Raios solares diagonais nas camadas superiores
+        if (camY < 1600) {
+            ctx.save();
+            const rayAlpha = Math.max(0, 0.085 * (1 - camY / 1600));
+            ctx.fillStyle = `rgba(253, 230, 138, ${rayAlpha.toFixed(3)})`;
+            for (let i = 0; i < 4; i++) {
+                const rx = width * (0.2 + i * 0.22) - camY * 0.08;
+                ctx.beginPath();
+                ctx.moveTo(rx, oceanTop);
+                ctx.lineTo(rx + 85, oceanTop);
+                ctx.lineTo(rx + 215, height);
+                ctx.lineTo(rx + 70, height);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+    }
+
+    // 3. Silhuetas em Paralaxe ao Fundo
+    gameState.bgSilhouettes.forEach(sil => {
+        const sy = gameState.waterLevelY + sil.depthMeters * PIXELS_PER_METER - camY;
+        if (sy > -80 && sy < height + 80) {
+            ctx.save();
+            ctx.translate(sil.x, sy);
+            ctx.scale(sil.speed >= 0 ? 1 : -1, 1);
+            ctx.fillStyle = 'rgba(2, 10, 20, 0.34)';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, sil.size, sil.size * 0.42, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(-sil.size * 0.85, 0);
+            ctx.lineTo(-sil.size * 1.35, -sil.size * 0.35 + Math.sin(sil.phase) * 5);
+            ctx.lineTo(-sil.size * 1.35, sil.size * 0.35 + Math.sin(sil.phase) * 5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+    });
+
+    // 4. Algas e Corais ao Fundo
+    gameState.seaweeds.forEach(sw => {
+        const baseY = gameState.waterLevelY + sw.depthMeters * PIXELS_PER_METER - camY;
+        if (baseY > -120 && baseY < height + 120) {
+            ctx.save();
+            ctx.strokeStyle = sw.color;
+            ctx.lineWidth = 4.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            let curX = sw.x;
+            let curY = baseY;
+            ctx.moveTo(curX, curY);
+            for (let s = 1; s <= sw.segments; s++) {
+                curY -= sw.segHeight;
+                curX += Math.sin(elapsedTime * 2.2 + sw.phase + s * 0.7) * 6;
+                ctx.lineTo(curX, curY);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+    });
+
+    gameState.corals.forEach(c => {
+        const cy = gameState.waterLevelY + c.depthMeters * PIXELS_PER_METER - camY;
+        if (cy > -80 && cy < height + 80) {
+            ctx.save();
+            ctx.translate(c.x, cy);
+            ctx.fillStyle = c.color;
+            ctx.globalAlpha = 0.72;
+            ctx.beginPath();
+            ctx.arc(0, 0, c.size * 0.55, Math.PI, 0);
+            ctx.arc(-c.size * 0.45, 2, c.size * 0.38, Math.PI, 0);
+            ctx.arc(c.size * 0.45, 2, c.size * 0.38, Math.PI, 0);
+            ctx.fill();
+            ctx.restore();
+        }
+    });
+
+    // 5. Limite Máximo de Alcance da Linha
+    const maxLineScreenY = gameState.waterLevelY + gameState.upgrades.line.maxDepth * PIXELS_PER_METER - camY;
+    if (maxLineScreenY > 0 && maxLineScreenY < height) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+        ctx.setLineDash([7, 7]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, maxLineScreenY);
+        ctx.lineTo(width, maxLineScreenY);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(253, 230, 138, 0.75)';
+        ctx.font = 'bold 11px "Plus Jakarta Sans", sans-serif';
+        ctx.fillText(`Limite da Linha (${gameState.upgrades.line.maxDepth}m)`, 14, maxLineScreenY - 6);
+        ctx.restore();
+    }
+
+    // 6. Bolhas
+    gameState.bubbles.forEach(b => {
+        const by = b.y - camY;
+        if (by > oceanTop && by < height) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(186, 230, 253, 0.45)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(b.x, by, b.radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    });
+
+    // 7. Peixes Livres
+    gameState.fishes.forEach(f => {
+        const fy = f.y - camY;
+        if (fy > -90 && fy < height + 90) {
+            drawFishSpecies(f, f.x, fy);
+        }
+    });
+
+    // 8. Superfície da Água Ondulada
+    if (waterScreenY > -20 && waterScreenY < height) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(0, waterScreenY);
+        for (let x = 0; x <= width + 24; x += 24) {
+            const wy = waterScreenY + Math.sin(x * 0.025 + elapsedTime * 3.4) * 4;
+            ctx.lineTo(x, wy);
+        }
+        ctx.strokeStyle = '#7dd3fc';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(254, 243, 199, 0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let x = 0; x <= width + 24; x += 24) {
+            const wy = waterScreenY - 1.5 + Math.cos(x * 0.03 + elapsedTime * 2.8) * 3;
+            if (x === 0) ctx.moveTo(x, wy);
+            else ctx.lineTo(x, wy);
+        }
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // 9. Barco Evoluído, Vara Envergável, Linha e Anzol
+    const boatScreenY = gameState.boat.y - camY;
+    const tipScreenX = gameState.boat.rodTipX;
+    const tipScreenY = gameState.boat.rodTipY - camY;
+    const hookScreenX = gameState.hook.x;
+    const hookScreenY = gameState.hook.y - camY;
+
+    if (boatScreenY > -220 && boatScreenY < height + 220) {
+        drawBoat(gameState.boat.x, boatScreenY, gameState.boat.bobAngle, gameState.boat.rodBend);
+    }
+
+    // Linha de pesca
+    if (gameState.fishingState !== 'IDLE' || hookScreenY > tipScreenY + 4) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(248, 250, 252, 0.88)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(tipScreenX, tipScreenY);
+        const midX = (tipScreenX + hookScreenX) * 0.5 + Math.sin(elapsedTime * 5) * 3;
+        const midY = (tipScreenY + hookScreenY) * 0.5;
+        ctx.quadraticCurveTo(midX, midY, hookScreenX, hookScreenY);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Peixes fisgados no anzol
+    gameState.hook.caughtFish.forEach(cf => {
+        drawFishSpecies(cf, cf.x, cf.y - camY);
+    });
+
+    // Anzol
+    drawHook(hookScreenX, hookScreenY);
+
+    // 10. Partículas e Textos Flutuantes
+    gameState.particles.forEach(p => {
+        const py = p.y - camY;
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, py, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    });
+
+    gameState.floatingTexts.forEach(ft => {
+        const fy = ft.y - camY;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, ft.alpha);
+        ctx.font = `800 ${ft.size}px "Plus Jakarta Sans", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(4, 15, 28, 0.9)';
+        ctx.strokeText(ft.text, ft.x, fy);
+        ctx.fillStyle = ft.color;
+        ctx.fillText(ft.text, ft.x, fy);
+        ctx.restore();
+    });
+}
+
+function drawDistantIslands(waterScreenY) {
+    ctx.save();
+    ctx.fillStyle = '#153b59';
+    ctx.beginPath();
+    ctx.moveTo(width * 0.08, waterScreenY + 2);
+    ctx.quadraticCurveTo(width * 0.16, waterScreenY - 34, width * 0.25, waterScreenY + 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#11304a';
+    ctx.beginPath();
+    ctx.moveTo(width * 0.62, waterScreenY + 2);
+    ctx.quadraticCurveTo(width * 0.71, waterScreenY - 24, width * 0.80, waterScreenY + 2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawCloud(x, y, scale) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = 'rgba(255, 247, 237, 0.72)';
+    ctx.beginPath();
+    ctx.arc(0, 0, 20, 0, Math.PI * 2);
+    ctx.arc(18, -5, 24, 0, Math.PI * 2);
+    ctx.arc(38, 0, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawSeagull(x, y, wingPhase, scale) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.strokeStyle = '#fef3c7';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    const flap = Math.sin(wingPhase) * 7;
+    ctx.beginPath();
+    ctx.moveTo(-10, flap);
+    ctx.quadraticCurveTo(-5, -5, 0, 0);
+    ctx.quadraticCurveTo(5, -5, 10, flap);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawBoat(x, y, bobAngle, rodBend) {
+    const tier = getBoatTierInfo(gameState.upgrades.boat.level);
+    const s = tier.scale;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(bobAngle);
+    ctx.scale(s, s);
+
+    // Vara de pesca envergável
+    const rodBaseX = 24;
+    const rodBaseY = -20;
+    const tipX = 84;
+    const tipY = -62 + rodBend;
+    const ctrlX = 56;
+    const ctrlY = -48 + rodBend * 0.5;
+
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 4.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(rodBaseX, rodBaseY);
+    ctx.quadraticCurveTo(ctrlX, ctrlY, tipX, tipY);
+    ctx.stroke();
+
+    // Ponteira da vara
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mastro e bandeira nos níveis superiores
+    if (tier.hasMast) {
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-6, -22);
+        ctx.lineTo(-6, -74);
+        ctx.stroke();
+
+        // Bandeira náutica ondulando
+        const waveFlag = Math.sin(elapsedTime * 6) * 4;
+        ctx.fillStyle = tier.trimColor;
+        ctx.beginPath();
+        ctx.moveTo(-6, -72);
+        ctx.lineTo(18, -67 + waveFlag);
+        ctx.lineTo(-6, -60);
+        ctx.closePath();
+        ctx.fill();
+
+        if (tier.hasRadar) {
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-14, -64);
+            ctx.lineTo(2, -64);
+            ctx.stroke();
+        }
+    }
+
+    // Cabine nos níveis 2+
+    if (tier.hasCabin) {
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-34, -38, 42, 20, [6, 6, 0, 0]);
+        ctx.fill();
+        ctx.stroke();
+
+        // Janela iluminada
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(-26, -32, 10, 8);
+        ctx.fillRect(-10, -32, 10, 8);
+    }
+
+    // Caixas de carga visíveis no convés de acordo com a quantidade de peixes no porão
+    const cratesToShow = Math.min(4, Math.ceil(gameState.inventory.length / Math.max(1, Math.ceil(tier.capacity / 4))));
+    for (let c = 0; c < cratesToShow; c++) {
+        const cx = 12 + c * 13;
+        ctx.fillStyle = '#b45309';
+        ctx.strokeStyle = '#fef3c7';
+        ctx.lineWidth = 1;
+        ctx.fillRect(cx, -25, 11, 8);
+        ctx.strokeRect(cx, -25, 11, 8);
+    }
+
+    // Casco principal do barco
+    ctx.fillStyle = tier.hullColor;
+    ctx.strokeStyle = '#fef3c7';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-56, -18);
+    ctx.lineTo(58, -18);
+    ctx.lineTo(44, 6);
+    ctx.lineTo(-42, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Faixa decorativa em latão/ouro
+    ctx.fillStyle = tier.trimColor;
+    ctx.fillRect(-52, -16, 106, 4);
+
+    // Vigias no casco
+    const portholes = tier.level >= 3 ? [-26, -6, 14] : [-14, 10];
+    portholes.forEach(px => {
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(px, -5, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    ctx.restore();
+}
+
+function drawHook(x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Boia/chumbada dourada
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(0, -3, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Gancho metálico
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, 9);
+    ctx.arc(-4.5, 9, 4.5, 0, Math.PI, false);
+    ctx.stroke();
+
+    // Ponta afiada
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.arc(-9, 8.5, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawFishSpecies(f, x, y) {
+    const r = f.baseRadius * f.sizeFactor;
+    const tailWag = Math.sin(f.swimPhase) * (r * 0.28);
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Aura dourada para peixes Troféu (tamanho >= 1.4x)
+    if (f.isTrophy) {
+        const aura = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 1.65);
+        aura.addColorStop(0, 'rgba(250, 204, 21, 0.36)');
+        aura.addColorStop(1, 'rgba(250, 204, 21, 0)');
+        ctx.fillStyle = aura;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 1.65, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    const spriteObj = getRealisticFishPngSprite(f);
+    const natW = (spriteObj && spriteObj.img && spriteObj.img.naturalWidth) || 0;
+    const natH = (spriteObj && spriteObj.img && spriteObj.img.naturalHeight) || 0;
+
+    // Todas as imagens normalizadas no cache já apontam para a direita
+    const flipX = f.dir >= 0 ? 1 : -1;
+    ctx.scale(flipX, 1);
+
+    if (spriteObj && spriteObj.img && spriteObj.img.complete && natW > 0 && natH > 0) {
+        const swimSkew = Math.sin(f.swimPhase) * 0.04;
+        ctx.transform(1, swimSkew, 0, 1, 0, 0);
+
+        const isRoundBody = f.shape === 'puffer' || f.shape === 'round' || f.shape === 'disc' || f.shape === 'sunfish';
+        const drawW = isRoundBody ? r * 2.85 : r * 3.45;
+        const drawH = drawW * (natH / natW);
+        ctx.drawImage(spriteObj.img, -drawW * 0.5, -drawH * 0.5, drawW, drawH);
+        ctx.restore();
+        return;
+    }
+
+    // Fallback vetorial imediato caso o sprite ainda esteja inicializando
+    ctx.fillStyle = f.finColor;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.85, 0);
+    ctx.lineTo(-r * 1.45, -r * 0.48 + tailWag);
+    ctx.lineTo(-r * 1.25, tailWag * 0.35);
+    ctx.lineTo(-r * 1.45, r * 0.48 + tailWag);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = f.color;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 1.1, f.shape === 'puffer' ? r * 0.95 : r * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+// ============================================================================
+// 9.5 FOTOS REAIS RECORTADAS (WIKIMEDIA SPECIAL:FILEPATH) + BAIACU REDONDO
+// ============================================================================
+const REALISTIC_FISH_PNG_CACHE = {};
+
+// Fotos reais via Special:FilePath (redirects estáveis + CORS) + orientação original da foto
+const REAL_FISH_PHOTO_SOURCES = {
+    lambari: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Astyanax_lacustris.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Astyanax_fasciatus.jpg?width=360'
+        ],
+        facesLeft: false
+    },
+    sardinha: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Sardina_pilchardus_2011.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Sardina_pilchardus_Gervais.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    palhaco: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Amphiprion_ocellaris_(Clown_anemonefish)_by_Nick_Hobgood.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Amphiprion_percula.jpg?width=360'
+        ],
+        facesLeft: false
+    },
+    borboleta: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Chaetodon_auriga_1.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Chaetodon_lunula_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    baiacu: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Diodon_holocanthus_1.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Arothron_meleagris_1.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Arothron_hispidus_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    cavala: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Scomberomorus_cavalla.png?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Scomber_scombrus.png?width=360'
+        ],
+        facesLeft: true
+    },
+    robalo: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Centropomus_undecimalis.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Dicentrarchus_labrax_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    dourado_mar: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Coryphaena_hippurus.png?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Coryphaena_hippurus_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    moreia: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Gymnothorax_javanicus_2.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Muraena_helena_1.jpg?width=360'
+        ],
+        facesLeft: false
+    },
+    arraia_pintada: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Aetobatus_narinari_1.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Taeniura_lymma_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    atum_azul: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Bluefin-big.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Thunnus_thynnus_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    peixe_lua: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Mola_mola_2.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Mola_mola_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    espadarte: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Xiphias_gladius_1.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Istiophorus_platypterus_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    tubarao_martelo: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Sphyrna_lewini_1.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Sphyrna_mokarran_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    tamboril: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Melanocetus_johnsonii.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Lophius_piscatorius_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    lula_colossal: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Architeuthis_dux.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Dosidicus_gigas_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    peixe_remo: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Regalecus_glesne_1.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Regalecus_glesne_2.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    tubarao_abissal: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/White_shark.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Mitsukurina_owstoni_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    baleia_dourada: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Humpback_Whale_underwater_shot.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Megaptera_novaeangliae_1.jpg?width=360'
+        ],
+        facesLeft: true
+    },
+    leviata_abissal: {
+        urls: [
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Coelacanth_model.jpg?width=360',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Latimeria_chalumnae_1.jpg?width=360'
+        ],
+        facesLeft: true
+    }
+};
+
+// Recorta o fundo da foto real, enquadra o peixe e normaliza a orientação para a direita
+function cutoutPhotoBackgroundToPng(loadedImg, facesLeft = false) {
+    try {
+        const w = loadedImg.naturalWidth || 280;
+        const h = loadedImg.naturalHeight || 180;
+        const off = document.createElement('canvas');
+        off.width = w;
+        off.height = h;
+        const c = off.getContext('2d');
+        c.drawImage(loadedImg, 0, 0, w, h);
+
+        const imgData = c.getImageData(0, 0, w, h);
+        const data = imgData.data;
+
+        let hasAlpha = false;
+        for (let i = 3; i < data.length; i += 16) {
+            if (data[i] < 245) {
+                hasAlpha = true;
+                break;
+            }
+        }
+
+        if (!hasAlpha) {
+            const cornerOffsets = [
+                0,
+                (w - 1) * 4,
+                ((h - 1) * w) * 4,
+                ((h - 1) * w + (w - 1)) * 4
+            ];
+            let bgR = 0, bgG = 0, bgB = 0;
+            cornerOffsets.forEach(idx => {
+                bgR += data[idx];
+                bgG += data[idx + 1];
+                bgB += data[idx + 2];
+            });
+            bgR /= 4;
+            bgG /= 4;
+            bgB /= 4;
+
+            const isUniformBg = cornerOffsets.every(idx => {
+                const dr = data[idx] - bgR;
+                const dg = data[idx + 1] - bgG;
+                const db = data[idx + 2] - bgB;
+                return (dr * dr + dg * dg + db * db) < 3400;
+            });
+
+            if (isUniformBg) {
+                const visited = new Uint8Array(w * h);
+                const queue = new Int32Array(w * h);
+                let head = 0;
+                let tail = 0;
+
+                const pushIfBg = (x, y) => {
+                    if (x < 0 || x >= w || y < 0 || y >= h) return;
+                    const p = y * w + x;
+                    if (visited[p]) return;
+                    visited[p] = 1;
+                    const idx = p * 4;
+                    const dr = data[idx] - bgR;
+                    const dg = data[idx + 1] - bgG;
+                    const db = data[idx + 2] - bgB;
+                    const distSq = dr * dr + dg * dg + db * db;
+                    if (distSq < 3800) {
+                        data[idx + 3] = 0;
+                        queue[tail++] = p;
+                    } else if (distSq < 6400) {
+                        data[idx + 3] = Math.round(((distSq - 3800) / 2600) * 255);
+                    }
+                };
+
+                for (let x = 0; x < w; x++) {
+                    pushIfBg(x, 0);
+                    pushIfBg(x, h - 1);
+                }
+                for (let y = 0; y < h; y++) {
+                    pushIfBg(0, y);
+                    pushIfBg(w - 1, y);
+                }
+
+                while (head < tail) {
+                    const p = queue[head++];
+                    const px = p % w;
+                    const py = (p - px) / w;
+                    pushIfBg(px + 1, py);
+                    pushIfBg(px - 1, py);
+                    pushIfBg(px, py + 1);
+                    pushIfBg(px, py - 1);
+                }
+                c.putImageData(imgData, 0, 0);
+            } else {
+                // Recorte orgânico suave para fotos submarinas em habitat natural
+                c.globalCompositeOperation = 'destination-in';
+                const maskGrad = c.createRadialGradient(
+                    w * 0.5, h * 0.5, Math.min(w, h) * 0.24,
+                    w * 0.5, h * 0.5, Math.max(w, h) * 0.47
+                );
+                maskGrad.addColorStop(0, 'rgba(0,0,0,1)');
+                maskGrad.addColorStop(0.74, 'rgba(0,0,0,0.92)');
+                maskGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                c.fillStyle = maskGrad;
+                c.fillRect(0, 0, w, h);
+            }
+        }
+
+        const cropped = c.getImageData(0, 0, w, h).data;
+        let minX = w, minY = h, maxX = 0, maxY = 0;
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                if (cropped[(y * w + x) * 4 + 3] > 25) {
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+
+        const srcX = maxX > minX + 10 ? minX : 0;
+        const srcY = maxY > minY + 10 ? minY : 0;
+        const cw = maxX > minX + 10 ? (maxX - minX + 1) : w;
+        const ch = maxY > minY + 10 ? (maxY - minY + 1) : h;
+
+        const outCanvas = document.createElement('canvas');
+        outCanvas.width = cw;
+        outCanvas.height = ch;
+        const outCtx = outCanvas.getContext('2d');
+        if (facesLeft) {
+            outCtx.translate(cw, 0);
+            outCtx.scale(-1, 1);
+        }
+        outCtx.drawImage(off, srcX, srcY, cw, ch, 0, 0, cw, ch);
+        return outCanvas.toDataURL('image/png');
+    } catch (e) {
+        return null;
+    }
+}
+
+function shadeHexColor(hex, percent) {
+    const clean = hex.replace('#', '');
+    const num = parseInt(clean, 16);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.max(0, Math.min(255, (num >> 16) + amt));
+    const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00ff) + amt));
+    const B = Math.max(0, Math.min(255, (num & 0x0000ff) + amt));
+    return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+}
+
+// Fallback dedicado para o Baiacu: peixe redondo inflado, pintado, com espinhos e nadadeiras realistas
+function buildRoundPufferRealisticFallback() {
+    const off = document.createElement('canvas');
+    off.width = 260;
+    off.height = 220;
+    const c = off.getContext('2d');
+    const cx = 136;
+    const cy = 112;
+    const rx = 74;
+    const ry = 68;
+
+    // Espinhos externos ao redor do corpo redondo
+    c.strokeStyle = '#fef9c3';
+    c.lineWidth = 2.6;
+    c.lineCap = 'round';
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 11) {
+        const cosA = Math.cos(a);
+        const sinA = Math.sin(a);
+        if (cosA > 0.85 && Math.abs(sinA) < 0.35) continue; // deixa a boca livre
+        const sx = cx + cosA * (rx - 2);
+        const sy = cy + sinA * (ry - 2);
+        const ex = cx + cosA * (rx + 12);
+        const ey = cy + sinA * (ry + 12);
+        c.beginPath();
+        c.moveTo(sx, sy);
+        c.lineTo(ex, ey);
+        c.stroke();
+    }
+
+    // Nadadeira caudal arredondada em leque
+    const tailGrad = c.createLinearGradient(cx - rx - 38, cy, cx - rx + 6, cy);
+    tailGrad.addColorStop(0, '#fde047');
+    tailGrad.addColorStop(1, '#a16207');
+    c.fillStyle = tailGrad;
+    c.beginPath();
+    c.moveTo(cx - rx + 8, cy - 12);
+    c.bezierCurveTo(cx - rx - 22, cy - 28, cx - rx - 38, cy - 22, cx - rx - 38, cy);
+    c.bezierCurveTo(cx - rx - 38, cy + 22, cx - rx - 22, cy + 28, cx - rx + 8, cy + 12);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = 'rgba(28, 25, 23, 0.75)';
+    c.lineWidth = 1.6;
+    c.stroke();
+
+    // Nadadeiras dorsal e anal arredondadas
+    c.fillStyle = 'rgba(250, 204, 21, 0.88)';
+    c.beginPath();
+    c.ellipse(cx - 24, cy - ry + 2, 16, 11, -0.35, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    c.beginPath();
+    c.ellipse(cx - 22, cy + ry - 2, 15, 10, 0.35, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Corpo redondo inflado com sombreamento 3D (dorso oliva-dourado e barriga branca)
+    const bodyGrad = c.createRadialGradient(cx + 14, cy - 18, 12, cx, cy, rx * 1.08);
+    bodyGrad.addColorStop(0, '#bef264');
+    bodyGrad.addColorStop(0.45, '#84cc16');
+    bodyGrad.addColorStop(0.78, '#4d7c0f');
+    bodyGrad.addColorStop(1, '#365314');
+    c.fillStyle = bodyGrad;
+    c.beginPath();
+    c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    c.fill();
+
+    // Barriga branca inflada com textura granulada
+    c.save();
+    c.beginPath();
+    c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    c.clip();
+
+    const bellyGrad = c.createLinearGradient(cx, cy + 4, cx, cy + ry);
+    bellyGrad.addColorStop(0, 'rgba(254, 252, 232, 0.92)');
+    bellyGrad.addColorStop(1, '#f8fafc');
+    c.fillStyle = bellyGrad;
+    c.beginPath();
+    c.ellipse(cx + 4, cy + 28, rx * 0.98, ry * 0.68, 0, 0, Math.PI * 2);
+    c.fill();
+
+    // Manchas naturais no dorso do baiacu
+    const spots = [
+        [-32, -36, 6], [-10, -44, 7], [14, -38, 6.5], [-44, -14, 5.5],
+        [-18, -20, 7.5], [6, -18, 6], [-30, 2, 5], [-4, -2, 5.5]
+    ];
+    c.fillStyle = 'rgba(26, 46, 5, 0.58)';
+    spots.forEach(([sx, sy, sr]) => {
+        c.beginPath();
+        c.arc(cx + sx, cy + sy, sr, 0, Math.PI * 2);
+        c.fill();
+    });
+
+    // Pequenos espinhos na barriga
+    c.fillStyle = '#cbd5e1';
+    for (let bx = cx - 42; bx <= cx + 46; bx += 14) {
+        for (let by = cy + 16; by <= cy + 54; by += 13) {
+            c.beginPath();
+            c.arc(bx, by, 1.7, 0, Math.PI * 2);
+            c.fill();
+        }
+    }
+    c.restore();
+
+    // Contorno do corpo redondo
+    c.strokeStyle = 'rgba(20, 35, 10, 0.78)';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    c.stroke();
+
+    // Nadadeira peitoral translúcida em leque
+    c.fillStyle = 'rgba(254, 240, 138, 0.78)';
+    c.beginPath();
+    c.moveTo(cx + 8, cy + 6);
+    c.quadraticCurveTo(cx - 16, cy - 6, cx - 18, cy + 12);
+    c.quadraticCurveTo(cx - 14, cy + 26, cx + 8, cy + 14);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Boca expressiva do baiacu
+    c.fillStyle = '#fef3c7';
+    c.strokeStyle = '#422006';
+    c.lineWidth = 1.8;
+    c.beginPath();
+    c.ellipse(cx + rx - 3, cy + 6, 7, 5, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    // Olho grande e brilhante
+    const eyeX = cx + 44;
+    const eyeY = cy - 18;
+    c.fillStyle = '#fde047';
+    c.beginPath();
+    c.arc(eyeX, eyeY, 12.5, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = '#1c1917';
+    c.lineWidth = 1.8;
+    c.stroke();
+
+    c.fillStyle = '#090d16';
+    c.beginPath();
+    c.arc(eyeX + 2, eyeY, 6.8, 0, Math.PI * 2);
+    c.fill();
+
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.arc(eyeX - 2.5, eyeY - 3.5, 3, 0, Math.PI * 2);
+    c.fill();
+
+    return off.toDataURL('image/png');
+}
+
+function buildProceduralRealisticFallback(sp) {
+    if (sp.id === 'baiacu' || sp.shape === 'puffer') {
+        return buildRoundPufferRealisticFallback();
+    }
+
+    const off = document.createElement('canvas');
+    off.width = 280;
+    off.height = 170;
+    const c = off.getContext('2d');
+    const cx = 145;
+    const cy = 85;
+    const bodyLen = 84;
+    const bodyH = sp.shape === 'disc' || sp.shape === 'sunfish' ? 56 : (sp.shape === 'round' ? 46 : 36);
+
+    const dorsalDark = shadeHexColor(sp.color, -34);
+    const midTone = sp.color;
+    const bellyLight = shadeHexColor(sp.color, 55);
+    const finBase = sp.finColor;
+
+    // Cauda com raios
+    const tailGrad = c.createLinearGradient(cx - bodyLen - 44, cy, cx - bodyLen + 6, cy);
+    tailGrad.addColorStop(0, finBase);
+    tailGrad.addColorStop(1, dorsalDark);
+    c.fillStyle = tailGrad;
+    c.beginPath();
+    c.moveTo(cx - bodyLen + 6, cy - 8);
+    c.bezierCurveTo(cx - bodyLen - 20, cy - 34, cx - bodyLen - 44, cy - 34, cx - bodyLen - 44, cy - 18);
+    c.quadraticCurveTo(cx - bodyLen - 32, cy, cx - bodyLen - 44, cy + 18);
+    c.bezierCurveTo(cx - bodyLen - 44, cy + 34, cx - bodyLen - 20, cy + 34, cx - bodyLen + 6, cy + 8);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = 'rgba(15, 10, 8, 0.8)';
+    c.lineWidth = 2;
+    c.stroke();
+
+    // Nadadeira dorsal
+    c.fillStyle = finBase;
+    c.beginPath();
+    c.moveTo(cx + 16, cy - bodyH + 4);
+    c.bezierCurveTo(cx + 4, cy - bodyH - 26, cx - 34, cy - bodyH - 24, cx - 50, cy - bodyH + 6);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Corpo com contra-sombreamento
+    c.beginPath();
+    c.moveTo(cx + bodyLen, cy + 2);
+    c.bezierCurveTo(cx + bodyLen * 0.78, cy - bodyH * 0.96, cx - bodyLen * 0.32, cy - bodyH * 1.06, cx - bodyLen, cy - 3);
+    c.lineTo(cx - bodyLen, cy + 4);
+    c.bezierCurveTo(cx - bodyLen * 0.32, cy + bodyH * 1.04, cx + bodyLen * 0.78, cy + bodyH * 0.92, cx + bodyLen, cy + 4);
+    c.closePath();
+
+    const bodyGrad = c.createLinearGradient(cx, cy - bodyH, cx, cy + bodyH);
+    bodyGrad.addColorStop(0, dorsalDark);
+    bodyGrad.addColorStop(0.35, midTone);
+    bodyGrad.addColorStop(1, bellyLight);
+    c.fillStyle = bodyGrad;
+    c.fill();
+    c.strokeStyle = 'rgba(15, 10, 8, 0.72)';
+    c.lineWidth = 1.8;
+    c.stroke();
+
+    // Olho realista
+    const eyeX = cx + bodyLen * 0.65;
+    const eyeY = cy - bodyH * 0.2;
+    const eyeR = 7.5;
+    c.fillStyle = '#f59e0b';
+    c.beginPath();
+    c.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#050505';
+    c.beginPath();
+    c.arc(eyeX + 0.5, eyeY, eyeR * 0.52, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.arc(eyeX - 2, eyeY - 2, 2, 0, Math.PI * 2);
+    c.fill();
+
+    return off.toDataURL('image/png');
+}
+
+function tryLoadRealPhotoChain(urls, facesLeft, onSuccess) {
+    let idx = 0;
+    const attempt = () => {
+        if (idx >= urls.length) return;
+        const url = urls[idx++];
+        const loader = new Image();
+        loader.crossOrigin = 'anonymous';
+        loader.onload = () => {
+            const cutoutUrl = cutoutPhotoBackgroundToPng(loader, facesLeft);
+            if (cutoutUrl) {
+                onSuccess(cutoutUrl);
+            } else {
+                attempt();
+            }
+        };
+        loader.onerror = () => attempt();
+        loader.src = url;
+    };
+    attempt();
+}
+
+function getRealisticFishPngSprite(fishOrSpecies) {
+    const id = fishOrSpecies.speciesId || fishOrSpecies.id;
+    if (REALISTIC_FISH_PNG_CACHE[id]) return REALISTIC_FISH_PNG_CACHE[id];
+
+    const sp = FISH_SPECIES.find(s => s.id === id) || fishOrSpecies;
+    const photoMeta = REAL_FISH_PHOTO_SOURCES[id];
+
+    const fallbackUrl = buildProceduralRealisticFallback(sp);
+    const img = new Image();
+    img.src = fallbackUrl;
+
+    const entry = {
+        img,
+        dataUrl: fallbackUrl
+    };
+    REALISTIC_FISH_PNG_CACHE[id] = entry;
+
+    if (photoMeta && Array.isArray(photoMeta.urls)) {
+        tryLoadRealPhotoChain(photoMeta.urls, Boolean(photoMeta.facesLeft), (cutoutUrl) => {
+            entry.dataUrl = cutoutUrl;
+            const finalImg = new Image();
+            finalImg.src = cutoutUrl;
+            entry.img = finalImg;
+
+            document.querySelectorAll(`img[data-fish-species="${id}"]`).forEach(el => {
+                el.src = cutoutUrl;
+            });
+        });
+    }
+
+    return entry;
+}
+
+// Pré-carrega todas as 20 fotos reais de peixes ao iniciar
+FISH_SPECIES.forEach(sp => getRealisticFishPngSprite(sp));
+
+// ============================================================================
+// 10. INTERFACE: HUD, LOJA COMPACTA, PORÃO (VENDA/DESCARTE) E BESTIÁRIO
+// ============================================================================
+function updateHUD() {
+    document.getElementById('coinDisplay').textContent = gameState.coins.toLocaleString('pt-BR');
+    document.getElementById('shopCoinDisplay').textContent = gameState.coins.toLocaleString('pt-BR');
+    document.getElementById('maxDepthHud').textContent = `${gameState.upgrades.line.maxDepth}m`;
+
+    const curHold = gameState.inventory.length;
+    const maxHold = gameState.upgrades.boat.capacity;
+    const isFull = curHold >= maxHold;
+
+    document.getElementById('holdCountDisplay').textContent = `${curHold}/${maxHold}`;
+    document.getElementById('holdFullBadge').classList.toggle('hidden', !isFull);
+    document.getElementById('holdFullBanner').classList.toggle('hidden', !isFull);
+
+    // Badge na Loja se houver algum upgrade acessível
+    const canAffordAny = Object.values(gameState.upgrades).some(u => gameState.coins >= u.cost);
+    document.getElementById('shopBadge').classList.toggle('hidden', !canAffordAny);
+
+    updateShopUI();
+}
+
+function updateShopUI() {
+    const coins = gameState.coins;
+    const { line, hook, reel, bait, boat } = gameState.upgrades;
+    const boatTier = getBoatTierInfo(boat.level);
+
+    // Linha
+    document.getElementById('lvlLine').textContent = `Nv. ${line.level}`;
+    document.getElementById('statLine').textContent = `${line.maxDepth}m`;
+    const btnLine = document.getElementById('buyLine');
+    btnLine.textContent = `$${line.cost}`;
+    btnLine.disabled = coins < line.cost;
+    document.getElementById('cardLine').classList.toggle('border-amber-400/70', coins >= line.cost);
+
+    // Anzol
+    document.getElementById('lvlHook').textContent = `Nv. ${hook.level}`;
+    document.getElementById('statHook').textContent = `${hook.capacity} ${hook.capacity === 1 ? 'peixe' : 'peixes'}`;
+    const btnHook = document.getElementById('buyHook');
+    btnHook.textContent = `$${hook.cost}`;
+    btnHook.disabled = coins < hook.cost;
+    document.getElementById('cardHook').classList.toggle('border-amber-400/70', coins >= hook.cost);
+
+    // Carretilha
+    document.getElementById('lvlReel').textContent = `Nv. ${reel.level}`;
+    document.getElementById('statReel').textContent = `${Math.round(reel.speedMult * 100)}%`;
+    const btnReel = document.getElementById('buyReel');
+    btnReel.textContent = `$${reel.cost}`;
+    btnReel.disabled = coins < reel.cost;
+    document.getElementById('cardReel').classList.toggle('border-amber-400/70', coins >= reel.cost);
+
+    // Isca
+    document.getElementById('lvlBait').textContent = `Nv. ${bait.level}`;
+    document.getElementById('statBait').textContent = `+${Math.round((bait.bonusMult - 1) * 100)}%`;
+    const btnBait = document.getElementById('buyBait');
+    btnBait.textContent = `$${bait.cost}`;
+    btnBait.disabled = coins < bait.cost;
+    document.getElementById('cardBait').classList.toggle('border-amber-400/70', coins >= bait.cost);
+
+    // Barco / Porão
+    document.getElementById('lvlBoat').textContent = `Nv. ${boat.level}`;
+    document.getElementById('boatTierName').textContent = boatTier.name;
+    document.getElementById('statBoat').textContent = `${boat.capacity} peixes`;
+    const btnBoat = document.getElementById('buyBoat');
+    btnBoat.textContent = `$${boat.cost}`;
+    btnBoat.disabled = coins < boat.cost;
+    document.getElementById('cardBoat').classList.toggle('border-teal-400/70', coins >= boat.cost);
+}
+
+// Compras na Loja
+document.getElementById('buyLine').addEventListener('click', () => {
+    const u = gameState.upgrades.line;
+    if (gameState.coins < u.cost) return;
+    gameState.coins -= u.cost;
+    u.level++;
+    u.maxDepth += 28;
+    u.cost = Math.round(u.cost * 1.48);
+    audio.playUpgrade();
+    updateHUD();
+});
+
+document.getElementById('buyHook').addEventListener('click', () => {
+    const u = gameState.upgrades.hook;
+    if (gameState.coins < u.cost) return;
+    gameState.coins -= u.cost;
+    u.level++;
+    u.capacity += 1;
+    u.cost = Math.round(u.cost * 1.62);
+    audio.playUpgrade();
+    updateHUD();
+});
+
+document.getElementById('buyReel').addEventListener('click', () => {
+    const u = gameState.upgrades.reel;
+    if (gameState.coins < u.cost) return;
+    gameState.coins -= u.cost;
+    u.level++;
+    u.speedMult = Number((u.speedMult + 0.22).toFixed(2));
+    u.cost = Math.round(u.cost * 1.45);
+    audio.playUpgrade();
+    updateHUD();
+});
+
+document.getElementById('buyBait').addEventListener('click', () => {
+    const u = gameState.upgrades.bait;
+    if (gameState.coins < u.cost) return;
+    gameState.coins -= u.cost;
+    u.level++;
+    u.bonusMult = Number((u.bonusMult + 0.2).toFixed(2));
+    u.cost = Math.round(u.cost * 1.5);
+    audio.playUpgrade();
+    updateHUD();
+});
+
+document.getElementById('buyBoat').addEventListener('click', () => {
+    const u = gameState.upgrades.boat;
+    if (gameState.coins < u.cost) return;
+    gameState.coins -= u.cost;
+    u.level++;
+    const nextTier = getBoatTierInfo(u.level);
+    u.capacity = nextTier.capacity;
+    u.cost = Math.round(u.cost * 1.55);
+    audio.playUpgrade();
+    addFloatingText(gameState.boat.x + 20, gameState.boat.y - 85, `Barco: ${nextTier.name}!`, '#2dd4bf', 18);
+    updateHUD();
+});
+
+// Porão: Vender Individual, Vender Tudo e Soltar/Descartar
+function renderInventoryModal() {
+    const listEl = document.getElementById('inventoryList');
+    const curCap = gameState.inventory.length;
+    const maxCap = gameState.upgrades.boat.capacity;
+    document.getElementById('invModalCapacity').textContent = `${curCap}/${maxCap}`;
+
+    const totalVal = gameState.inventory.reduce((sum, item) => sum + item.value, 0);
+    document.getElementById('invTotalValue').textContent = totalVal.toLocaleString('pt-BR');
+    document.getElementById('btnSellAll').disabled = gameState.inventory.length === 0;
+
+    if (gameState.inventory.length === 0) {
+        listEl.innerHTML = `
+            <div class="col-span-full flex flex-col items-center justify-center py-10 text-center text-slate-400">
+                <span class="text-4xl mb-2">🎣</span>
+                <p class="font-bold text-sm text-slate-200">O porão está vazio.</p>
+                <p class="text-xs mt-1">Pesque para guardar peixes aqui e escolher quais vender!</p>
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = gameState.inventory.map((item, idx) => {
+        const trophyBadge = item.isTrophy
+            ? `<span class="text-[10px] font-extrabold bg-amber-500/25 text-amber-200 border border-amber-400/50 px-1.5 py-0.5 rounded-full">🏆 Troféu</span>`
+            : `<span class="text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-600/50 px-1.5 py-0.5 rounded-full">${item.sizeLabel}</span>`;
+        const fishPng = getRealisticFishPngSprite(item).dataUrl;
+
+        return `
+            <div class="bg-slate-900/90 border ${item.isTrophy ? 'border-amber-400/60' : 'border-amber-500/25'} rounded-xl p-2.5 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-12 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/15 overflow-hidden p-1" style="background:${item.color}26;">
+                        <img data-fish-species="${item.speciesId}" src="${fishPng}" alt="${item.name}" class="w-full h-full object-contain drop-shadow" />
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="font-bold text-xs sm:text-sm text-white truncate">${item.name}</span>
+                            ${trophyBadge}
+                        </div>
+                        <div class="text-[11px] text-slate-300 mt-0.5">
+                            Peso: <b class="text-teal-300">${item.weight}kg</b> • Valor: <b class="text-amber-300">$${item.value}</b>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button data-sell-idx="${idx}" class="btn-sell-one btn-game bg-gradient-to-b from-amber-300 to-amber-500 text-slate-950 font-extrabold text-xs px-2.5 py-1.5 rounded-lg border border-yellow-100">
+                        Vender $${item.value}
+                    </button>
+                    <button data-release-idx="${idx}" title="Soltar peixe para liberar espaço" class="btn-release-one btn-game bg-slate-800 hover:bg-rose-950 text-slate-300 hover:text-rose-200 font-bold text-xs px-2 py-1.5 rounded-lg border border-slate-600/60 hover:border-rose-500/60">
+                        Soltar
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    listEl.querySelectorAll('.btn-sell-one').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const index = Number(btn.getAttribute('data-sell-idx'));
+            const item = gameState.inventory[index];
+            if (!item) return;
+            gameState.inventory.splice(index, 1);
+            gameState.coins += item.value;
+            audio.playSell();
+            addFloatingText(gameState.boat.x, gameState.boat.y - 75, `+${item.value} moedas!`, '#fde047', 18);
+            renderInventoryModal();
+            updateHUD();
+        });
+    });
+
+    listEl.querySelectorAll('.btn-release-one').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const index = Number(btn.getAttribute('data-release-idx'));
+            const item = gameState.inventory[index];
+            if (!item) return;
+            gameState.inventory.splice(index, 1);
+            audio.playRelease();
+            renderInventoryModal();
+            updateHUD();
+        });
+    });
+}
+
+document.getElementById('btnSellAll').addEventListener('click', () => {
+    if (gameState.inventory.length === 0) return;
+    const total = gameState.inventory.reduce((acc, item) => acc + item.value, 0);
+    const count = gameState.inventory.length;
+    gameState.inventory = [];
+    gameState.coins += total;
+    audio.playSell();
+    addFloatingText(gameState.boat.x + 20, gameState.boat.y - 80, `Vendeu ${count} peixes: +$${total}!`, '#fde047', 20);
+    renderInventoryModal();
+    updateHUD();
+});
+
+// Bestiário com Recordes de Peso (kg) e Valor
+function renderCatalogModal() {
+    const listEl = document.getElementById('catalogList');
+    let discovered = 0;
+
+    listEl.innerHTML = FISH_SPECIES.map(sp => {
+        const rec = gameState.records[sp.id];
+        const isKnown = Boolean(rec && rec.count > 0);
+        if (isKnown) discovered++;
+
+        const badgeClass = getRarityBadgeStyle(sp.rarity);
+        const weightRecText = isKnown ? `${rec.maxWeight}kg` : '—';
+        const valueRecText = isKnown ? `$${rec.maxValue}` : '—';
+        const countText = isKnown ? `${rec.count}x` : '0x';
+        const fishPng = getRealisticFishPngSprite(sp).dataUrl;
+
+        return `
+            <div class="bg-slate-900/90 border ${isKnown ? 'border-amber-500/35' : 'border-slate-800'} rounded-2xl p-3 flex items-center gap-3">
+                <div class="w-14 h-12 rounded-xl flex items-center justify-center shrink-0 border border-white/10 overflow-hidden p-1" style="background:${isKnown ? sp.color + '28' : '#0f172a'};">
+                    <img data-fish-species="${sp.id}" src="${fishPng}" alt="${isKnown ? sp.name : 'Espécie Desconhecida'}" class="w-full h-full object-contain ${isKnown ? 'drop-shadow' : 'brightness-0 invert opacity-20'}" />
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-1.5">
+                        <span class="font-bold text-sm text-white truncate">${isKnown ? sp.name : 'Espécie Desconhecida'}</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${badgeClass}">${sp.rarity}</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">
+                        ${sp.zone} • <span class="text-sky-300 font-semibold">${sp.minDepth}m–${sp.maxDepth}m</span>
+                    </div>
+                    <div class="text-[11px] text-slate-300 mt-1 flex items-center justify-between gap-2">
+                        <span>Capturas: <b class="text-white">${countText}</b></span>
+                        <span>Recorde: <b class="text-teal-300">${weightRecText}</b> / <b class="text-amber-300">${valueRecText}</b></span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    document.getElementById('discoveredCount').textContent = `${discovered}/${FISH_SPECIES.length}`;
+}
+
+// Modais e Botões de Controle
+const shopPanel = document.getElementById('shopPanel');
+const inventoryPanel = document.getElementById('inventoryPanel');
+const catalogPanel = document.getElementById('catalogPanel');
+const gameMenuPanel = document.getElementById('gameMenuPanel');
+const creditsPanel = document.getElementById('creditsPanel');
+
+function openModal(panel) {
+    audio.init();
+    shopPanel.classList.add('hidden');
+    inventoryPanel.classList.add('hidden');
+    catalogPanel.classList.add('hidden');
+    gameMenuPanel.classList.add('hidden');
+    panel.classList.remove('hidden');
+}
+
+// Tela Inicial: Novo jogo, Carregar e Creditos
+document.getElementById('btnNewGame').addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    audio.init();
+    audio.applyMix();
+    resetSessionProgressOnly();
+    setScreenMode('PLAYING');
+    audio.playUpgrade();
+});
+
+document.getElementById('btnLoadGame').addEventListener('click', () => {
+    audio.init();
+    if (loadSavedGameIntoSession()) {
+        audio.playUpgrade();
+        setScreenMode('PLAYING');
+    } else {
+        updateTitleSaveAvailability();
+    }
+});
+
+document.getElementById('btnCredits').addEventListener('click', () => {
+    audio.init();
+    creditsPanel.classList.remove('hidden');
+});
+
+document.getElementById('btnCloseCredits').addEventListener('click', () => {
+    creditsPanel.classList.add('hidden');
+});
+
+// Botão Menu durante o jogo: Salvar jogo, Reset e Sair sem salvar
+document.getElementById('btnGameMenu').addEventListener('click', () => {
+    document.getElementById('menuFeedback').textContent = '';
+    openModal(gameMenuPanel);
+});
+
+document.getElementById('btnCloseGameMenu').addEventListener('click', () => {
+    gameMenuPanel.classList.add('hidden');
+});
+
+document.getElementById('btnMenuSave').addEventListener('click', () => {
+    audio.init();
+    const ok = saveManualGame();
+    const fb = document.getElementById('menuFeedback');
+    if (ok) {
+        audio.playSell();
+        fb.textContent = 'Jogo salvo! Agora você pode usar Carregar na tela inicial.';
+        fb.className = 'text-center text-xs text-teal-300 font-semibold min-h-[1.2rem]';
+    } else {
+        fb.textContent = 'Não foi possível salvar o jogo.';
+        fb.className = 'text-center text-xs text-rose-300 font-semibold min-h-[1.2rem]';
+    }
+});
+
+document.getElementById('btnMenuReset').addEventListener('click', () => {
+    audio.init();
+    audio.playRelease();
+    resetSessionProgressOnly();
+    const fb = document.getElementById('menuFeedback');
+    fb.textContent = 'Progresso da sessão reiniciado (Carregar mantido).';
+    fb.className = 'text-center text-xs text-amber-300 font-semibold min-h-[1.2rem]';
+});
+
+document.getElementById('btnMenuExitNoSave').addEventListener('click', () => {
+    audio.init();
+    audio.playRelease();
+    resetActiveHookAndEffects();
+    setScreenMode('TITLE');
+});
+
+document.getElementById('btnShopToggle').addEventListener('click', () => {
+    updateShopUI();
+    openModal(shopPanel);
+});
+document.getElementById('btnCloseShop').addEventListener('click', () => shopPanel.classList.add('hidden'));
+
+document.getElementById('btnInventory').addEventListener('click', () => {
+    renderInventoryModal();
+    openModal(inventoryPanel);
+});
+document.getElementById('btnOpenHoldFromBanner').addEventListener('click', () => {
+    renderInventoryModal();
+    openModal(inventoryPanel);
+});
+document.getElementById('btnShopToHold').addEventListener('click', () => {
+    renderInventoryModal();
+    openModal(inventoryPanel);
+});
+document.getElementById('btnCloseInventory').addEventListener('click', () => inventoryPanel.classList.add('hidden'));
+
+document.getElementById('btnCatalog').addEventListener('click', () => {
+    renderCatalogModal();
+    openModal(catalogPanel);
+});
+document.getElementById('btnCloseCatalog').addEventListener('click', () => catalogPanel.classList.add('hidden'));
+
+document.getElementById('btnDismissPortrait').addEventListener('click', () => {
+    document.getElementById('portraitBanner').classList.remove('show-portrait');
+});
+
+// Controles de Áudio (Música, Som do Mar, SFX)
+function syncAudioButtons() {
+    const mBtn = document.getElementById('btnMusic');
+    const wBtn = document.getElementById('btnWaves');
+    const sBtn = document.getElementById('btnSound');
+
+    document.getElementById('iconMusic').textContent = audio.musicEnabled ? '🎵' : '🔇';
+    mBtn.classList.toggle('opacity-50', !audio.musicEnabled);
+
+    document.getElementById('iconWaves').textContent = audio.wavesEnabled ? '🌊' : '🔕';
+    wBtn.classList.toggle('opacity-50', !audio.wavesEnabled);
+
+    document.getElementById('iconSfx').textContent = audio.sfxEnabled ? '🔊' : '🔈';
+    sBtn.classList.toggle('opacity-50', !audio.sfxEnabled);
+}
+
+document.getElementById('btnMusic').addEventListener('click', () => {
+    audio.toggleMusic();
+    syncAudioButtons();
+    saveAudioPrefs();
+});
+
+document.getElementById('btnWaves').addEventListener('click', () => {
+    audio.toggleWaves();
+    syncAudioButtons();
+    saveAudioPrefs();
+});
+
+document.getElementById('btnSound').addEventListener('click', () => {
+    audio.toggleSfx();
+    syncAudioButtons();
+    saveAudioPrefs();
+});
+
+// ============================================================================
+// 11. LOOP PRINCIPAL & INICIALIZAÇÃO
+// ============================================================================
+function loop(now) {
+    const dt = Math.min(0.05, (now - lastTime) / 1000);
+    lastTime = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+}
+
+window.onload = function () {
+    loadAudioPrefs();
+    syncAudioButtons();
+    initScenario();
+    populateFishes();
+    updateHUD();
+    updateHookHUD();
+    setScreenMode('TITLE');
+    lastTime = performance.now();
+    requestAnimationFrame(loop);
+};
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch((error) => {
+            console.log("Não foi possível registrar o service worker:", error);
+        });
+    });
+}
+</script>
+
+</body>
+</html>

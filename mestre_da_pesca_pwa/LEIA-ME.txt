@@ -1,0 +1,19 @@
+MESTRE DA PESCA — pacote PWA
+
+Conteúdo:
+- index.html: seu jogo com apenas as referências necessárias para PWA.
+- manifest.webmanifest: nome, ícones, tela cheia e orientação paisagem.
+- sw.js: cache básico dos arquivos locais.
+- icons/: ícones 192x192 e 512x512.
+
+PRÓXIMOS PASSOS:
+1. Publique TODO o conteúdo desta pasta em um endereço HTTPS (por exemplo, GitHub Pages).
+2. Abra o endereço publicado e teste o jogo.
+3. Cole o endereço HTTPS no PWA Builder para gerar o pacote Android.
+4. Para publicar na Play Store, será necessário seguir os requisitos atuais da loja e usar uma conta de desenvolvedor administrada por um adulto responsável.
+
+IMPORTANTE:
+- O jogo usa Tailwind CSS e Google Fonts por CDN; esses recursos externos precisam de internet.
+- O cache offline aqui cobre os arquivos locais do app, não as bibliotecas externas.
+- O modo fullscreen pode ser aplicado de forma diferente dependendo do navegador/aparelho.
+- Faça backup do HTML original antes de substituir qualquer arquivo.
